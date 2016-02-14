@@ -56,17 +56,12 @@
 
 #### Research
 
-- pgpool-II
-- BART
-- pg_repack
 - pg_upgrade
-+ extensions
-+ fsm, visibility map
-+ copy freeze
 - replication slot
 - Full text search
 
 - full page write on WAL
-- BRIN
 - GIN!!!!
 - toast
+
+- BRIN
