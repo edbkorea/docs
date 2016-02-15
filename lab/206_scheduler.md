@@ -28,6 +28,37 @@ MSG:  [ppas-agent-9.5 started]
 INFO: [Please see service script file /var/log/ppas-agent-9.5/ppas-agent-9.5_script.log for details]
 ```
 
+아래와 같은 메시지가 표시된다면 `pg_agen`가 죽어있는 것이다.
+
+```
+[root@ppaslab ~]# /etc/init.d/ppas-agent-9.5 status
+INFO: [ppas-agent-9.5 dead but pid file "/var/run/ppas-agent-9.5/ppas-agent-9.5.pid" exists. Please delete this file manually]
+
+INFO: [Total 1 errors encountered]
+INFO: [Please see application log file /var/log/ppas-agent-9.5/ppas-agent-9.5.log for details]
+INFO: [Please see service script file /var/log/ppas-agent-9.5/ppas-agent-9.5_script.log for details]
+```
+
+원인은 `pg_agent`가 접속한 DB가 재기동 된것이다. 이는 `pg_agent` 자체의 문제로 향후 개선 될 것으로 기대한다. 아래와 같이 pid 파일을 삭제한 다음 다시 기동시켜 주면 된다.
+
+```
+[root@ppaslab ~]# rm -f /var/run/ppas-agent-9.5/ppas-agent-9.5.pid
+[root@ppaslab ~]# /etc/init.d/ppas-agent-9.5 status
+MSG:  [ppas-agent-9.5 is not running]
+
+INFO: [Please see service script file /var/log/ppas-agent-9.5/ppas-agent-9.5_script.log for details]
+
+[root@ppaslab ~]# /etc/init.d/ppas-agent-9.5 start
+Starting ppas-agent-9.5                                    [  OK  ]
+
+INFO: [PID: 8630]
+INFO: [CMD: /opt/PostgresPlus/9.5AS/bin/pgagent -l 1 -s /var/log/ppas-agent-9.5/ppas-agent-9.5.log hostaddr=localhost port=5444 dbname=edb user=enterprisedb]
+MSG:  [ppas-agent-9.5 started]
+
+INFO: [Please see service script file /var/log/ppas-agent-9.5/ppas-agent-9.5_script.log for details]
+
+```
+
 ### 테이블 준비
 
 ```
