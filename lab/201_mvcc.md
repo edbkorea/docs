@@ -202,8 +202,8 @@
 1. 준비
 
   ```sql
-  drop table test;
-  create table test
+  drop table dots;
+  create table dots
   (
     id int not null primary key,
     color text not null
