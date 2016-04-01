@@ -234,6 +234,29 @@ Specifies the cost delay value that will be used in automatic VACUUM operations.
 #### autovacuum_vacuum_cost_limit (integer)
 Specifies the cost limit value that will be used in automatic VACUUM operations. If -1 is specified (which is the default), the regular vacuum_cost_limit value will be used. Note that the value is distributed proportionally among the running autovacuum workers, if there is more than one, so that the sum of the limits for each worker does not exceed the value of this variable. This parameter can only be set in the postgresql.conf file or on the server command line; but the setting can be overridden for individual tables by changing table storage parameters.
 
+### 테이블 별 수동 관리
+
+대부분의 autovacuum 관련 파라메터들은 테이블 별로 설정이 가능하다. 따라서 global 설정은 일반적인 workload에 맞춰서 설정하고 이 기준에 벗어나는 테이블틀은 별도로 관리해 주는 것도 좋은 방법이다.
+테이블 별 설정은 storage parameter를 이용하며 사용 가능한 파라메터의 목록은 아래 링크에서 확인 가능하다.
+
+http://www.postgresql.org/docs/current/static/sql-createtable.html#SQL-CREATETABLE-STORAGE-PARAMETERS
+
+* 예제
+  ```sql
+  create table test
+  (
+    id integer,
+    val1 bytea,
+    val2 bytea,
+    val3 varchar
+  )
+    with (autovacuum_enabled = false);
+
+  alter table sometable set (
+    autovacuum_enabled = false
+  );
+  ```
+
 ## 관리상 주의 점
 
 ### Long query
