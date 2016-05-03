@@ -9,7 +9,22 @@
 
 ## 1. Installation - GUI Mode
 ##### 1. Run install file
-![1](./images/103_1.png)
+```
+[root@ppaslab ~]# cd /opt/pkgs/
+[root@ppaslab pkgs]# ls
+edb_languagepack_95.bin                       instantclient-sdk-linux.x64-11.2.0.4.0.zip  pg_repack-master.zip
+edb_mtk.bin                                   ojdbc6.jar                                  ppas_dbserver_as95.bin
+instantclient-basic-linux.x64-11.2.0.4.0.zip  oracle_fdw-ORACLE_FDW_1_3_0.tar.gz          ppasmeta-9.5.0.5-linux-x64.tar.gz
+[root@ppaslab pkgs]# tar -zxvf ppasmeta-9.5.0.5-linux-x64.tar.gz 
+ppasmeta-9.5.0.5-linux-x64/
+ppasmeta-9.5.0.5-linux-x64/ppasmeta-9.5.0.5-linux-x64.run
+ppasmeta-9.5.0.5-linux-x64/README_FIRST_Linux64.txt
+[root@ppaslab pkgs]# cd ppasmeta-9.5.0.5-linux-x64
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]# ls
+README_FIRST_Linux64.txt  ppasmeta-9.5.0.5-linux-x64.run
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]# 
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]# ./ppasmeta-9.5.0.5-linux-x64.run 
+```
 ##### 2. Select Language
 ![1](./images/103_2.png)
 ##### 3. Error - SELinux
@@ -79,12 +94,27 @@
 ##### 35. Completing StackBuilder
 ![1](./images/103_35.png)
 ##### 36. Done
-![1](./images/103_36.png)
+```
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]# ./ppasmeta-9.5.0.5-linux-x64.run 
+
+Installing Database Server ...
+ Installing pgAgent ...
+ Installing Connectors ...
+ Installing Migration Toolkit ...
+ Installing EDB*Plus ...
+ Installing Infinite Cache ...
+ Installing Postgres Enterprise Manager Client ...
+ Installing pgpool-II ...
+ Installing pgpool-II Extensions ...
+ Installing StackBuilder Plus ...
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]# 
+```
+
 
 ## 2. Related Files
 #### 2.1. /etc/postgres-reg.ini
 ```
-[root@pg1 stage]# vi /etc/postgres-reg.ini
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]# vi /etc/postgres-reg.ini
 
 [Global_machine_id]
 MachineID=5086a7bc-c9be-11e5-82d0-080027089f92
@@ -166,12 +196,12 @@ InstallationDirectory=/opt/PostgresPlus/stackbuilderplus
 Version=2.04-1
 InstallationDate=2016-02-03
 Branding=Postgres Plus Add-ons
-[root@pg1 stage]#
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]#
 ```
 
 #### 2.2. /etc/ppas-reg_9.5.ini
 ```
-[root@pg1 stage]# vi /etc/ppas-reg_9.5.ini
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]# vi /etc/ppas-reg_9.5.ini
 
 [server]
 databaseServer=true
@@ -193,9 +223,9 @@ pgpool_extension=true
 
 #### 2.3. /etc/init.d Service Scripts
 ```
-[root@pg1 stage]# cd /etc/init.d/
-[root@pg1 init.d]#
-[root@pg1 init.d]# ls -ltr
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]# cd /etc/init.d/
+[root@ppaslab init.d]#
+[root@ppaslab init.d]# ls -ltr
 ...
 -rwxr-xr-x. 1 root root 16285 Feb  3 00:11 ppas-9.5
 -rwxr-xr-x. 1 root root 15481 Feb  3 00:11 ppas-agent-9.5
@@ -204,21 +234,21 @@ pgpool_extension=true
 -rwxr-xr-x. 1 root root 16051 Feb  3 00:12 ppas-pgpool-3.4
 -rwxr-xr-x. 1 root root 15407 Feb  3 00:12 pgbouncer-1.6
 ...
-[root@pg1 init.d]#
+[root@ppaslab init.d]#
 
 ```
 
 ## 3. Uninstallation
 ```
-[root@pg1 init.d]# cd /opt/PostgresPlus/
-[root@pg1 PostgresPlus]#
-[root@pg1 PostgresPlus]#
-[root@pg1 PostgresPlus]# ls
+[root@ppaslab init.d]# cd /opt/PostgresPlus/
+[root@ppaslab PostgresPlus]#
+[root@ppaslab PostgresPlus]#
+[root@ppaslab PostgresPlus]# ls
 9.5AS       edbmtk         pgbouncer-1.6  stackbuilderplus             uninstall-ppas_9_5_complete.dat
 connectors  infinitecache  pgpool-II-3.4  uninstall-ppas_9_5_complete
-[root@pg1 PostgresPlus]#
-[root@pg1 PostgresPlus]#
-[root@pg1 PostgresPlus]# ./uninstall-ppas_9_5_complete
+[root@ppaslab PostgresPlus]#
+[root@ppaslab PostgresPlus]#
+[root@ppaslab PostgresPlus]# ./uninstall-ppas_9_5_complete
 Do you want to uninstall Postgres Plus Advanced Server and all of its modules? [Y/n]: Y
 
 ----------------------------------------------------------------------------
@@ -233,17 +263,17 @@ Press [Enter] to continue:
 
 Info: Uninstallation completed
 Press [Enter] to continue:
-[root@pg1 PostgresPlus]#
-[root@pg1 PostgresPlus]# ls
+[root@ppaslab PostgresPlus]#
+[root@ppaslab PostgresPlus]# ls
 9.5AS
-[root@pg1 PostgresPlus]# cd 9.5AS/
-[root@pg1 9.5AS]# ls
+[root@ppaslab PostgresPlus]# cd 9.5AS/
+[root@ppaslab 9.5AS]# ls
 data
-[root@pg1 9.5AS]# rm -rf data
-[root@pg1 9.5AS]#
-[root@pg1 stage]# cd /etc/init.d/
-[root@pg1 init.d]#
-[root@pg1 init.d]# ls -ltr
+[root@ppaslab 9.5AS]# rm -rf data
+[root@ppaslab 9.5AS]#
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]# cd /etc/init.d/
+[root@ppaslab init.d]#
+[root@ppaslab init.d]# ls -ltr
 total 388
 -rwxr-xr-x. 1 root root  1725 Aug 19  2010 acpid
 -rwxr-xr-x. 1 root root  2261 Jun 25  2011 oddjobd
@@ -260,11 +290,11 @@ total 388
 
 ## 4. Installation - CLI Mode
 ```
-[root@pg1 9.5AS]# cd ~/stage/ppasmeta-9.5.0.5-linux-x64
-[root@pg1 ppasmeta-9.5.0.5-linux-x64]#
-[root@pg1 ppasmeta-9.5.0.5-linux-x64]#
-[root@pg1 ppasmeta-9.5.0.5-linux-x64]#
-[root@pg1 ppasmeta-9.5.0.5-linux-x64]# ./ppasmeta-9.5.0.5-linux-x64.run --mode text
+[root@ppaslab ~]# cd /opt/pkgs/ppasmeta-9.5.0.5-linux-x64
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]#
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]#
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]#
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]# ./ppasmeta-9.5.0.5-linux-x64.run --mode text
 Language Selection
 
 Please select the installation language
@@ -739,33 +769,34 @@ Please wait while Setup installs Postgres Plus Advanced Server on your computer.
 ----------------------------------------------------------------------------
 Setup has finished installing Postgres Plus Advanced Server on your computer.
 
-[root@pg1 ppasmeta-9.5.0.5-linux-x64]#
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]#
 ```
 
 #### 4.1. Post Installation
 ##### 4.1.1. Change Directory Ownership
 ```
-[root@pg1 ppasmeta-9.5.0.5-linux-x64]# cd /opt/
-[root@pg1 opt]#
-[root@pg1 opt]# ls
+[root@ppaslab ppasmeta-9.5.0.5-linux-x64]# cd /opt/
+[root@ppaslab opt]#
+[root@ppaslab opt]# ls
 PostgresPlus  VBoxGuestAdditions-5.0.14  rh
 [root@ppaslab opt]# ll
 total 12
 drwxr-xr-x. 8 root daemon 4096 Feb 13 22:18 PostgresPlus
 drwxr-xr-x. 9 root root   4096 Feb  2 18:49 VBoxGuestAdditions-5.0.14
 drwxr-xr-x. 2 root root   4096 Mar 26  2015 rh
-[root@pg1 opt]#
-[root@pg1 opt]# chown -R enterprisedb.enterprisedb PostgresPlus/
-[root@pg1 opt]#
-[root@pg1 opt]# ll
+[root@ppaslab opt]#
+[root@ppaslab opt]# chown -R enterprisedb.enterprisedb PostgresPlus/
+[root@ppaslab opt]#
+[root@ppaslab opt]# ll
 total 12
 drwxr-xr-x. 8 enterprisedb enterprisedb 4096 Feb 13 22:18 PostgresPlus
 drwxr-xr-x. 9 root         root         4096 Feb  2 18:49 VBoxGuestAdditions-5.0.14
 drwxr-xr-x. 2 root         root         4096 Mar 26  2015 rh
-[root@pg1 opt]#
+[root@ppaslab opt]#
 ```
 ##### 4.1.2. pgplus_env.sh
 ```
+[root@ppaslab ~]# su - enterprisedb
 -bash-4.1$ ls
 bin        installer                       scripts                        uninstall-edbpgagent
 client-v6  lib                             server_3rd_party_licenses.txt  uninstall-edbpgagent.dat

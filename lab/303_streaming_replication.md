@@ -31,14 +31,14 @@ server starting
   Password:
   ```
 
-* `data5445/postgresql.conf`
+* `data5446/postgresql.conf`
   ```ini
   port = 5446
   archive_mode = off
   hot_standby = on
   ```
 
-* `data5445/recovery.conf`
+* `data5446/recovery.conf`
   ```ini
   standby_mode = 'on'
   primary_conninfo = 'host=localhost port=5444 user=enterprisedb password=ppas'

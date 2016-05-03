@@ -25,7 +25,7 @@
   edb=# \c pgbench copyuser
   Password for user copyuser:
   You are now connected to database "pgbench" as user "copyuser".
-  pgbench=# copy pgbench_accounts to '/tmp/pgbench_accounts.csv' with csv header DELIMITER '|;
+  pgbench=# copy pgbench_accounts to '/tmp/pgbench_accounts.csv' with csv header DELIMITER '|';
   COPY 10000000
 
   $ ls -l /tmp/pgbench_accounts.csv

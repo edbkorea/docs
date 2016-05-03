@@ -97,7 +97,7 @@ PGXS의 기능을 이용해 적절한 `CREATE FUNCTION` 구문을 자동으로 �
 
 * `Makefile` 수정
   ```Makefile
-  MODULES = add_func
+  MODULES = add_ab
   DATA_built = add_ab.sql
 
   PG_CONFIG = pg_config

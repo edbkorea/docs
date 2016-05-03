@@ -381,6 +381,12 @@
 
 * 설치
 
+   ```
+  [enterprisedb@ppaslab complex]$ make
+  [enterprisedb@ppaslab complex]$ make install
+
+  ```
+
   ```
   edb=# \i /opt/PostgresPlus/9.5AS/share/contrib/complex.sql
   psql.bin:/opt/PostgresPlus/9.5AS/share/contrib/complex.sql:1: NOTICE:  table "test_complex" does not exist, skipping
@@ -497,17 +503,19 @@
 
   #include "fmgr.h"
 
+  #include "utils/builtins.h"
+
   PG_MODULE_MAGIC;
 
   /*****************************************************************************
    * Type definition
    *****************************************************************************/
-  #define MD5_DIGEST_LENGTH  32
+  #define MD5_DIGEST_LENGTH  16
 
   typedef struct Jumin
   {
     char data[7];
-    char md5hash[MD5_DIGEST_LENGTH+1];
+    char md5hash[MD5_DIGEST_LENGTH];
   } Jumin;
 
   /*****************************************************************************
@@ -515,8 +523,6 @@
    *****************************************************************************/
   static uint8 decode_era(char);
   static void md5(const char*, size_t, char*);
-  static text * cstring_to_text(const char *);
-  static text * ncstring_to_text(const char *, size_t);
   static int jumin_cmp_eq_internal(Jumin *, Jumin *);
   static uint8 decode_era(char);
   static int jumin_cmp_internal(Jumin *, Jumin *);
@@ -587,7 +593,7 @@
       || jumin->data[6] == '6'
       || jumin->data[6] == '8') result = 'F';
 
-    PG_RETURN_TEXT_P(ncstring_to_text(&result, 1));
+    PG_RETURN_TEXT_P(cstring_to_text_with_len(&result, 1));
   }
 
   PG_FUNCTION_INFO_V1(jumin_birthday);
@@ -752,28 +758,14 @@
     }
     return t;
   }
+
   static void  md5(const char* value, size_t len, char* result)
   {
-
-    if (pg_md5_hash(value, len, result) == false) {
+    if (pg_md5_binary(value, len, result) == false) {
       ereport(ERROR,
           (errcode(ERRCODE_OUT_OF_MEMORY),
            errmsg("out of memory")));
     }
-  }
-
-  static text * cstring_to_text(const char *s)
-  {
-    return ncstring_to_text(s, strlen(s));
-  }
-
-  static text * ncstring_to_text(const char *s, size_t len)
-  {
-    text *result = (text*)palloc(len + VARHDRSZ);
-    SET_VARSIZE(result, len + VARHDRSZ);
-    memcpy(VARDATA(result), s, len);
-
-    return result;
   }
   ```
 
@@ -923,7 +915,7 @@
   );
 
   CREATE INDEX test_jumin_ind ON test_jumin
-     USING btree(a jumin_ops);
+     USING btree(a);
 
   -- data for user-defined types are just strings in the proper textual
   -- representation.

@@ -1,17 +1,9 @@
-# Day 1. Configuration Hands-on Lab
-```
-1. Change Configuration
- - Cluster Level Configuration
- - DB Level Configuration
- - User Level Configuration
- - session Level Configuration
-2. Apply Changes
-```
+# Configuration Hands-on Lab
 
-## 1. Change Configuration
-#### 1.1. Cluster Level Configuration
-##### 1.1.1. General way
-```sql
+## Change Configuration
+#### Cluster Level Configuration
+##### General way
+```
 -bash-4.1$ psql
 psql.bin (9.5.0.5)
 Type "help" for help.
@@ -68,8 +60,8 @@ pending_restart | f
 edb=#
 ```
 
-##### 1.1.2. Postgres 9.4 or above
-```sql
+##### Postgres 9.4 or above
+```
 -bash-4.1$ psql
 psql.bin (9.5.0.5)
 Type "help" for help.
@@ -104,8 +96,8 @@ work_mem = '10MB'
 -bash-4.1$
 ```
 
-#### 1.2. DB Level Configuration
-```sql
+#### DB Level Configuration
+```
 -bash-4.1$ psql
 psql.bin (9.5.0.5)
 Type "help" for help.
@@ -159,8 +151,8 @@ postgres=# select oid, datname from pg_database ;
 postgres=#
 ```
 
-#### 1.3. User Level Configuration
-```sql
+#### User Level Configuration
+```
 postgres=# create user test password 'ppas';
 CREATE ROLE
 postgres=#
@@ -193,8 +185,8 @@ postgres=> select usename, usesysid from pg_user;
 postgres=>
 ```
 
-#### 1.4. Session Level Configuration
-```sql
+#### Session Level Configuration
+```
 postgres=> alter session set work_mem = '10MB';
 ALTER SESSION
 postgres=>
@@ -221,15 +213,15 @@ postgres=> show work_mem ;
 postgres=>
 ```
 
-## 2. Apply Changes
-#### 2.1. pg_ctl
-##### 2.1.1. Reload
+## Apply Changes
+#### pg_ctl
+##### Reload
 ```
 -bash-4.1$ pg_ctl -D $PGDATA reload
 server signaled
 -bash-4.1$
 ```
-##### 2.1.2. Re-start
+##### Re-start
 ```
 -bash-4.1$ pg_ctl -D $PGDATA restart -mf -w
 waiting for server to shut down.... done
@@ -240,8 +232,8 @@ waiting for server to start....2016-02-14 12:02:21 KST LOG:  redirecting log out
 server started
 -bash-4.1$
 ```
-#### 2.2. psql Command
-```sql
+#### psql Command
+```
 -bash-4.1$ psql
 psql.bin (9.5.0.5)
 Type "help" for help.
@@ -262,4 +254,88 @@ edb=# select pg_reload_conf;
 (1 row)
 
 edb=#
+```
+
+## pg_hba.conf
+#### Default Configuration
+```
+-bash-4.1$ cd $PGDATA
+-bash-4.1$ vi pg_hba.conf
+
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+# "local" is for Unix domain socket connections only
+local   all             all                                     md5
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            md5
+# IPv6 local connections:
+host    all             all             ::1/128                 md5
+
+```
+
+#### localhost에서 test 유저가 edb 데이터베이스에 인증없이 접속
+```
+-bash-4.1$ vi pg_hba.conf
+
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+# "local" is for Unix domain socket connections only
+local   edb             test                                    trust
+local   all             all                                     md5
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            md5
+# IPv6 local connections:
+host    all             all             ::1/128                 md5
+
+-bash-4.1$ pg_ctl reload
+-bash-4.1$
+-bash-4.1$ psql -d edb -U test
+Password for user test:
+psql.bin (9.5.0.5)
+Type "help" for help.
+
+edb=>
+```
+
+#### localhost에서 test 유저가 edb 데이터베이스에 인증없이 접속
+```
+-bash-4.1$ vi pg_hba.conf
+
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+# "local" is for Unix domain socket connections only
+local   all             all                                     md5
+local   edb             test                                    trust
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            md5
+# IPv6 local connections:
+host    all             all             ::1/128                 md5
+
+-bash-4.1$ pg_ctl reload
+-bash-4.1$
+-bash-4.1$ psql -d edb -U test
+Password for user test:
+
+```
+
+#### $EDBHOME/.pgpass
+```
+-bash-4.1$ psql -d postgres -U test
+Password for user test:
+-bash-4.1$
+-bash-4.1$ cd $EDBHOME
+-bash-4.1$
+-bash-4.1$ cat .pgpass
+localhost:5444:edb:enterprisedb:ppas
+-bash-4.1$
+-bash-4.1$ vi .pgpass
+
+localhost:5444:edb:enterprisedb:ppas
+localhost:5444:postgres:test:ppas
+
+-bash-4.1$ psql -d postgres -U test
+psql.bin (9.5.0.5)
+Type "help" for help.
+
+postgres=>
 ```
