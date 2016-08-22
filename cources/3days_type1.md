@@ -41,6 +41,9 @@
  - [PGPool.md](../lab/PGPool.md)
 3. EFM
  - [EFM.md](../lab/EFM.md)
+ - [pg1.efm.properties](../lab/misc/pg1.efm.properties)
+ - [pg2.efm.properties](../lab/misc/pg2.efm.properties)
+ - [pg3.efm.properties](../lab/misc/pg3.efm.properties)
 4. Useful Data Types
  - [DataTypes.md](../lab/DataTypes.md)
 5. JSON & JSONB
