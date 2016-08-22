@@ -1,4 +1,4 @@
-# Monitoring
+# Lab: Monitoring
 
 ## pgbench
 

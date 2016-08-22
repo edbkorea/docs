@@ -1,9 +1,4 @@
-# Day 1. Create Cluster & Database Hands-on Lab
-```sql
-1. initdb
-2. Create Database
-3. Schema and search_path
-```
+# Lab: Create Cluster & Database Hands-on Lab
 
 ## 1. initdb
 #### 1.1. initdb options

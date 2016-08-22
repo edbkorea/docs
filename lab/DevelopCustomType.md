@@ -1,4 +1,4 @@
-# Lab. Custom Type
+# Lab: Custom Type
 
 ## 참고자료
 

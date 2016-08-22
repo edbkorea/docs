@@ -1,11 +1,4 @@
-# Day 1. Installation Hands-on Lab
-```
-1. Installation - GUI Mode
-2. Related Files
-3. Uninstallation
-4. Installation - Text Mode
-5. Start and Stop Server
-```
+# Lab: Installation Hands-on Lab
 
 ## 1. Installation - GUI Mode
 ##### 1. Run install file

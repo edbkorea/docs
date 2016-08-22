@@ -1,4 +1,4 @@
-# Lab. Extension
+# Lab: Extension
 
 ## jumin extension package
 

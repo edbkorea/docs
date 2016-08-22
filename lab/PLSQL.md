@@ -1,4 +1,4 @@
-# Lab. Procedural Languages
+# Lab: Procedural Languages
 
 ## SQL Function (Non procedural)
 

@@ -1,4 +1,4 @@
-# Lab. Moving Data
+# Lab: Moving Data
 
 ## COPY
 

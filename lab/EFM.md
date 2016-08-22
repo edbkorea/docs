@@ -1,13 +1,4 @@
-# Day 3. EDB Failover Manager Hands-on Lab
-```
-1. Demo Environment
-2. Configuration
-3. EFM Agent Startup Procedures
-4. Failure Scenarios
- - Master DB Failure
- - Master EFM Agent Failure
- - Master Node Failure
-```
+# Lab: EDB Failover Manager Hands-on Lab
 
 ## 1. Demo Environment
 * Master node

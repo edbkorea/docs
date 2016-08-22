@@ -1,4 +1,4 @@
-# Installation Hands-on Lab
+# Lab: Installation Hands-on Lab
 
 ## 설치 및 DB 기동
 

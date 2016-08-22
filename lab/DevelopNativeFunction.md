@@ -1,4 +1,4 @@
-# Lab. Native Function
+# Lab: Native Function
 
 ## 참고자료
 

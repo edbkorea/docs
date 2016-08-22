@@ -1,5 +1,7 @@
-# `FIRST`/`LAST` 쿼리 변환
-## 설명
+# Lab: 오라클 쿼리 변환시 특이 사항 
+
+## `FIRST`/`LAST` 쿼리 변환
+### 설명
 
 `AGGR(A) KEEP (DENSE_RANK FIRST/LAST ORDER BY B) ... GROUP BY C` 의 형태로 사용되는 `FIRST`/`LAST` 함수는 다음과 같은 분석을 수행한다.
 
@@ -310,12 +312,12 @@ Grant                               7000       7000       7000
 107 rows selected.
 ```
 
-## 전환 예시
+### 전환 예시
 
 아래 예시는 이런 류의 분석이 필요할 경우의 변환 예제이다.
 하지만 이 함수가 꼭 필요해서 사용되기 보다는 불필요하게 사용되는 경우가 많다. 반드시 이런 류의 분석이 필요한 경우가 아니라면 좀더 직관적인 방식으로 변환하는 것이 더 편할 수 있다.
 
-### Oracle
+#### Oracle
 ```sql
 SELECT
      transactionid,
@@ -324,7 +326,7 @@ SELECT
  WHERE accountId = 1
  GROUP BY transactionid;
 ```
-### PAS
+#### PAS
 ```sql
 SELECT transactionid, max(COMCreditCode) as COMCreditCode
 FROM (
@@ -337,9 +339,9 @@ WHERE written = max_written or (max_written is null and written is null)
 GROUP BY transactionid;
 ```
 
-# 계층 쿼리
+## 계층 쿼리
 
-## `CONNECT BY PRIOR`
+### `CONNECT BY PRIOR`
 
 PAS는 `CONNECT BY PRIOR` 구문을 이용한 계층 쿼리를 지원 하지만 `CONNECT BY`에 해당하는 조건을 2개 이상 사용할 수 없다. 이 경우 예전 방식처럼 `WITH RECURSIVE` 구문을 이용하여야 한다.
 
@@ -353,7 +355,7 @@ PAS는 `CONNECT BY PRIOR` 구문을 이용한 계층 쿼리를 지원 하지만 
 동작 원리는 `CONNECT BY`와 동일하며 recursive part가 언젠가는 아무 데이터도 반환하지 않아야 쿼리가 종료된다.
 차이점으로 오라클의 방식은 depth-first 순서로 조회하며 PAS는 breadth-first 방식으로 조회 한다.
 
-### Oracle
+#### Oracle
 
 ```sql
 SELECT value
@@ -368,7 +370,7 @@ FROM   employees
 CONNECT BY PRIOR employee_id = manager_id;
 ```
 
-### PAS
+#### PAS
 
 ```sql
 WITH RECURSIVE cte AS (
@@ -398,7 +400,7 @@ SELECT *
 FROM   cte;
 ```
 
-## `SYS_CONNECT_BY_PATH`
+### `SYS_CONNECT_BY_PATH`
 
 `SYS_CONNECT_BY_PATH`를 지원하지 않기 때문에 역시 `WITH RECURSIVE`를 이용하여 처리해야 한다.
 
@@ -435,11 +437,11 @@ SELECT COMPANY_CODE
   FROM X ;
 ```
 
-## `CONNECT_BY_ISLEAF`
+### `CONNECT_BY_ISLEAF`
 
 `CONNECT_BY_ISLEAF`를 변환하기 위해서는 recursive 쿼리의 결과에 대해서 자식이 존재하는지 여부를 다시한번 check할 수 밖에 없다.
 
-### Oracle
+#### Oracle
 
 ```sql
 SELECT ID
@@ -450,7 +452,7 @@ SELECT ID
 CONNECT BY PRIOR ID = NEXTID;
 ```
 
-### PAS
+#### PAS
 
 ```sql
 WITH RECURSIVE W(ID,NEXTID) AS
@@ -470,13 +472,13 @@ SELECT ID
  ORDER BY ID;
 ```
 
-# 기타 구문 변환
+## 기타 구문 변환
 
-## 임의 개수의 행 생성
+### 임의 개수의 행 생성
 
 Row 수를 원하는 만큼 생성할 경우 오라클에서는 Connect by Level 구문을 이용하지만, PPAS에서는 generate_series 함수로 더 편리하게 처리할 수 있다. `FROM` 절이나 Select list에서 모두 가능
 
-### Oracle
+#### Oracle
 
 ```sql
 SQL> select level from dual connect by level <= 5;
@@ -490,7 +492,7 @@ LEVEL
          5
 ```
 
-### PAS
+#### PAS
 
 ```sql
 test=# select generate_series(1,5) as level ;
@@ -511,10 +513,10 @@ test=# select x as level from generate_series(1,5) x;
      5
 ```
 
-## `MERGE INTO` 쿼리 변환
+### `MERGE INTO` 쿼리 변환
 PAS에서는 `MERGE INTO` 구문을 지원하지 않는다. 9.5 버전에 추가된 `INSERT ON CONFLICT` 구문을 이용하거나 CTE를 이용하여 구현 할 수 있다.
 
-### Oracle
+#### Oracle
 ```sql
 MERGE INTO myTable2 m
 USING myTable d ON (m.pid = d.pid)
@@ -524,8 +526,8 @@ WHEN NOT MATCHED THEN
 	INSERT VALUES ( d.pid ,d.sales ,'NEW' );
 ```
 
-### PAS
-#### 9.4 이전 방식
+#### PAS
+##### 9.4 이전 방식
 ```sql
 WITH upsert AS 
 (
@@ -539,7 +541,7 @@ SELECT a.pid ,a.sales ,'NEW'
  WHERE a.pid NOT IN ( SELECT b.pid FROM upsert b );
 ```
 
-#### 9.5 이후
+##### 9.5 이후
 ```sql
 INSERT INTO myTable2
 SELECT a.pid ,a.sales ,'NEW'
@@ -548,7 +550,7 @@ ON CONFLICT (pid)
 DO UPDATE SET sales = sales + EXCLUDED.sales , status = EXCLUDED.status
 ```
 
-### 실습
+#### 실습
 아래 쿼리를 변환하여 보자.
 ```sql
 create table dept2 (like dept);
@@ -581,11 +583,11 @@ WHEN NOT MATCHED THEN
 ```
 
 
-## PAGING 쿼리 변환
+### PAGING 쿼리 변환
 
 PAS에서도 ROWNUM 문장을 그대로 사용할 수 있으나 native 연산자인 LIMIT 을 사용하는 것을 권고함
 
-### Oracle
+#### Oracle
 
 ```sql
 SELECT * FROM EMP WHERE ROWNUM <=3;
@@ -593,7 +595,7 @@ SELECT * FROM EMP WHERE ROWNUM <=3;
 SELECT * FROM (SELECT * FROM EMP ORDER BY SAL) WHERE ROWNUM <=3
 ```
 
-### PAS
+#### PAS
 
 ```sql
 SELECT * FROM EMP LIMIT 3;
@@ -601,7 +603,7 @@ SELECT * FROM EMP LIMIT 3;
 SELECT * FROM EMP ORDER BY SAL LIMIT 3;
 ```
 
-## 문자열 상수 사용
+### 문자열 상수 사용
 
 PAS에서는 문자열 상수를 `unknown` 형으로 가정한다.
 
@@ -633,11 +635,11 @@ edb=# select substring(t, 1, 2) from (select 'abcdef'::text as t) t;     -- 정�
 
 Sub-query의 결과가 `unknown` type일 경우 이 값을 이용한 함수 호출이 실패한다. 이 경우 위와 같이 type을 명시적으로 지정해 줘야 한다.
 
-## `WM_CONCAT` / `LISTAGG`
+### `WM_CONCAT` / `LISTAGG`
 
 `array_to_string` / `array_agg` 함수를 사용하여 변환 할 수 있다.
 
-### Oracle
+#### Oracle
 ```sql
 SELECT DEPTNO
      , LISTAGG(ENAME,',') WITHIN GROUP (ORDER BY DEPTNO)
@@ -646,7 +648,7 @@ SELECT DEPTNO
  GROUP BY DEPTNO; 
 ```
 
-### PAS
+#### PAS
 
 ```sql
 SELECT DEPTNO
@@ -677,11 +679,11 @@ edb=# select ARRAY_AGG(job order by mgr) from emp;
 (1 row)
 ```
 
-# 기타
+## 기타
 
-## 숫자형 상수 처리
+### 숫자형 상수 처리
 
-### Oracle
+#### Oracle
 
 Oracle에서는 숫자를 기본적으로 number 형으로 처리한다.
 
@@ -711,7 +713,7 @@ SQL> select '9223372036854775807' + 1 from dual;
                      9223372036854775808
 ```
 
-### PAS
+#### PAS
 
 PAS에서는 숫자를 크기에 따라 int, bigint, number로 처리한다.
 * int: signed 32bit integer(-2147483648 ~ 2147483647)
@@ -764,7 +766,7 @@ edb=# select '9223372036854775807' + 1::numeric from dual;
 (1 row)
 ```
 
-## 문자열 형 처리
+### 문자열 형 처리
 
 문자열 형 처리는 Oracle과 크게 다르지 않으나 `CHAR`의 경우 오라클과 다르게 뒤에 자동으로 공백 문자가 붙지 않는다.
 
@@ -777,7 +779,7 @@ insert into test2 values (4, '  abc  ', '  abc  ', '  abc  ');
 
 ```
 
-### Oracle
+#### Oracle
 
 ```
 SQL> select * from test2;
@@ -797,7 +799,7 @@ SQL> select id, length(val1), length(val2), length(val3) from test2;
          4            7           10            7
 ```
 
-### PAS
+#### PAS
 
 ```
 edb=# select * from test2;
@@ -817,9 +819,9 @@ edb=# select id, length(val1), length(val2), length(val3) from test2;
   4 |      7 |      5 |      7
 ```
 
-## Date type
+### Date type
 
-### `SYSDATE` & `now()`, `current_timestamp`, `localtimestamp`
+#### `SYSDATE` & `now()`, `current_timestamp`, `localtimestamp`
 
   * sysdate는 오라클 호환성 기능으로 제공되어 사용이 가능
   * now() 함수의 경우, 트랜잭션으로 묶이게되면 트랜잭션 동안 트랜잭션이 시작된 시점으로 시간이 고정됨
@@ -869,11 +871,11 @@ edb=# select id, length(val1), length(val2), length(val3) from test2;
   COMMIT;
   ```
 
-### Interval truncation
+#### Interval truncation
 
 PAS에서는 날짜간의 연산 결과가 interval type인데 interval type은 `trunc()`함수를 사용할 수 없다.
 
-#### Oracle
+##### Oracle
 
 ```sql
 SQL> select (sysdate + 1 + 1/24) - sysdate from dual;
@@ -889,7 +891,7 @@ TRUNC((SYSDATE+1+1/24)-SYSDATE)
 			      1
 ```
 
-#### PAS
+##### PAS
 
 ```sql
 edb=# select (sysdate + 1 + 1/24) - sysdate from dual;
@@ -917,9 +919,9 @@ edb=# select date_part('days', (sysdate + 1 + 1/24) - sysdate) from dual;
 
 첫번째 parameter에 `microseconds`, `milliseconds`, `second`, `minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`, `decade`, `century`, `millennium`등을 지정하여 원하는 값을 얻을 수 있다.
 
-## `NULL` 처리
+### `NULL` 처리
 
-### `''` 처리
+#### `''` 처리
 
 * Null값이 포함된 연산은 결과가 `NULL`
 * EDB PAS에서는 오라클과 동일하게 `'TEXT'||NULL` = `'TEXT'`
@@ -937,7 +939,7 @@ edb=# select date_part('days', (sysdate + 1 + 1/24) - sysdate) from dual;
   | `select count(*) from test where b = ''`    |    0   |    0    |
   | `select count(*) from test where b is null` |    1   |    1    |
 
-### `NULL`과 Index
+#### `NULL`과 Index
 
 * EDB PAS에서는 null도 index에 포함 된다.
 
@@ -998,7 +1000,7 @@ edb=# select date_part('days', (sysdate + 1 + 1/24) - sysdate) from dual;
   - amsearchnulls :  "Does the access method support IS NULL/NOT NULL searches?"
   - btree 타입의 인덱스에서는 인덱스 스캔을 통해서 null 검색이 가능
 
-## 예약어
+### 예약어
 
 Ansi SQL 키워드 및 PAS 전용 키워드는 Alias명이나 변수 명으로 직접 사용 불가.
 
@@ -1019,7 +1021,7 @@ Ansi SQL 키워드 및 PAS 전용 키워드는 Alias명이나 변수 명으로 �
 * 예약어 목록
 	http://www.postgresql.org/docs/9.5/static/sql-keywords-appendix.html
 
-## 식별자 대소문자 구별
+### 식별자 대소문자 구별
 
 EDB PAS 역시 오라클과 마찬가지로 테이블, 컬럼 명 등의 식별자에 대해 대소문자를 가리지 않는다.
 
@@ -1034,7 +1036,7 @@ edb=# select A, b from Test;
 
 하지만 오라클과 반대로 내부적으로 모든 식별자를 소문자로 저장하기 때문에 `""`를 이용하여 대소문자를 구별하도록 처리한 경우 아래와 같이 차이가 발생한다. 일반적인 경우 문제가 되지 않으나 외부 툴을 이용하여 DDL을 생성하는 경우 식별자가 `""`로 감싸여져 있는 경우가 있으므로 주의가 필요하다.
 
-### 예제
+#### 예제
 
 * 테이블 생성
 
@@ -1121,8 +1123,8 @@ edb=# select A, b from Test;
                  ^
   ```
 
-# PostgreSQL 고유 기능
-## Domain Data Type
+## PostgreSQL 고유 기능
+### Domain Data Type
 
 **예제**: TEST1 과 TEST2 테이블의 컬럼은 아래 CHECK 제약 조건에 의해 VARCHAR 형이지만 2자리 숫자 타입의 값만 받아들여야함!
 
@@ -1193,7 +1195,7 @@ edb=# \d test2
 edb=#
 ```
 
-## UPDATE Returning
+### UPDATE Returning
 
 ```
 edb=# create table emp2 as select * from emp;
@@ -1231,7 +1233,7 @@ edb=#
 
 오라클 경우에도 UPDATE .. RETURNING 문을 지원하나 PL/SQL 등에서만 사용해야함
 
-## Distinct On
+### Distinct On
 
 a 컬럼에 대해 distinct 한 값 로우만을 가져오는 동시에, b 컬럼까지 한번에 select 가능
 
@@ -1290,7 +1292,7 @@ edb=# select distinct on (a) a, b from dist_on order by 1,2;
 edb=#
 ```
 
-## Regular Expression
+### Regular Expression
 
 ```
 edb=# create table reg_exp (a varchar);

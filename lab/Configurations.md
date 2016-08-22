@@ -1,4 +1,4 @@
-# Configuration Hands-on Lab
+# Lab: Configuration Hands-on Lab
 
 ## Change Configuration
 #### Cluster Level Configuration

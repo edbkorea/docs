@@ -1,8 +1,4 @@
-# Day 1. User Tools Hands-on Lab
-```
-1. psql
-2. PEM Client
-```
+# Lab: User Tools Hands-on Lab
 
 ## 1. psql
 #### 1.1. psql Options

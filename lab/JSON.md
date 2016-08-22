@@ -1,4 +1,4 @@
-# Lab. JSON & JSONB
+# Lab: JSON & JSONB
 
 ## HStore
 ```

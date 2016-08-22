@@ -1,4 +1,4 @@
-# Lab. Tablespace
+# Lab: Tablespace
 
 ## 정보 확인
 

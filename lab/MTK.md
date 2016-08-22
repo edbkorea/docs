@@ -1,12 +1,4 @@
-# Day 5. Oracle Migration Toolkit Hands-on Lab
-
-```
-Hands-on Lab Steps
-1. MTK Installation
-2. MTK Configuration
-3. Schema Migration
-4. Data Migration
-```
+# Lab: Oracle Migration Toolkit Hands-on Lab
 
 ## 1. Installation
 

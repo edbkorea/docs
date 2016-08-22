@@ -1,4 +1,4 @@
-# Lab. Foreign Data Wrapper
+# Lab: Foreign Data Wrapper
 
 ## `file_fdw`
 

@@ -1,4 +1,4 @@
-# Lab. Connectors
+# Lab: Connectors
 
 ## CopyManager in JDBC
 

@@ -1,8 +1,4 @@
-# Day 1. Security Hands-on Lab
-```
-1. pg_hba.conf
-2. User & Role
-```
+# Lab: Security Hands-on Lab
 
 ## 1. pg_hba.conf
 #### 1.1. Default Configuration

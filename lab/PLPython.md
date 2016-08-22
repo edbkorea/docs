@@ -1,4 +1,4 @@
-# Lab. PL/Python
+# Lab: PL/Python
 
 ## How to install
 

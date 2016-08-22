@@ -1,4 +1,4 @@
-# Lab. Scheduler
+# Lab: Scheduler
 
 ## 준비
 

@@ -1,4 +1,4 @@
-# Lab. Useful data types
+# Lab: Useful data types
 
 ## `bytea`
 
