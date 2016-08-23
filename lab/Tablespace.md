@@ -80,6 +80,7 @@ edb=# select oid, * from pg_tablespace;
 
 * 테이블 생성시 지정
   ```
+  create extension if not exists pgcrypto;
   drop table if exists test;
   create table test
     tablespace tbs01
@@ -106,6 +107,7 @@ edb=# select oid, * from pg_tablespace;
 * 기존 테이블 이동
 
   ```
+  create extension if not exists pgcrypto;
   drop table if exists test;
   create table test
   as
