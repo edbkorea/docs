@@ -661,37 +661,71 @@ edb=#
 
 ## 2. PEM
 
-##### 1. Execute PEM Client
-![1](./images/104_101.png)
-##### 2. PEM Client
-![1](./images/104_102.png)
-##### 3. Connect to DB Server
-![1](./images/104_103.png)
-##### 4. Enter Password
-![1](./images/104_104.png)
-##### 5. Connected DB Server
-![1](./images/104_105.png)
-##### 6. Navigate Databases
-![1](./images/104_106.png)
-##### 7. Navigate edb Database
-![1](./images/104_107.png)
-##### 8. Navigate public Schema of edb Database
-![1](./images/104_108.png)
-##### 9. Execute Query Tool
-![1](./images/104_109.png)
-##### 10. Execute Query & Query Result
-![1](./images/104_110.png)
-##### 10. Execute Query Plan & Graphical Query Plan
-![1](./images/104_111.png)
-##### 12. Execute Query Plan & Plain Text Query Plan
-![1](./images/104_112.png)
-##### 13. Connect to Other Database
-![1](./images/104_113.png)
-##### 14. Enter Connection Information
-![1](./images/104_114.png)
-##### 15. Enter Password
-![1](./images/104_115.png)
-##### 16. Connected to postgres Database
-![1](./images/104_116.png)
-##### 17. Check Connection Information
-![1](./images/104_117.png)
+1. Execute PEM Client
+
+	![1](./images/104_101.png)
+
+2. PEM Client
+
+	![1](./images/104_102.png)
+
+3. Connect to DB Server
+
+	![1](./images/104_103.png)
+
+4. Enter Password
+
+	![1](./images/104_104.png)
+
+5. Connected DB Server
+
+	![1](./images/104_105.png)
+
+6. Navigate Databases
+
+	![1](./images/104_106.png)
+
+7. Navigate edb Database
+
+	![1](./images/104_107.png)
+
+8. Navigate public Schema of edb Database
+
+	![1](./images/104_108.png)
+
+9. Execute Query Tool
+
+  Menu > Tools > Query Tool 또는 Ctrl+E
+	![1](./images/104_109.png)
+
+10. Execute Query & Query Result
+
+	![1](./images/104_110.png)
+
+11. Execute Query Plan & Graphical Query Plan
+
+	![1](./images/104_111.png)
+
+12. Execute Query Plan & Plain Text Query Plan
+
+	![1](./images/104_112.png)
+
+13. Connect to Other Database
+
+	![1](./images/104_113.png)
+
+14. Enter Connection Information
+
+	![1](./images/104_114.png)
+
+15. Enter Password
+
+	![1](./images/104_115.png)
+
+16. Connected to postgres Database
+
+	![1](./images/104_116.png)
+
+17. Check Connection Information
+
+	![1](./images/104_117.png)
