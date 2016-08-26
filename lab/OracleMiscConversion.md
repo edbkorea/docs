@@ -44,6 +44,7 @@ END;
 ### 실행 결과
 
 #### Oracle
+
 ```
   1  BEGIN
   2	 DELETE X;
@@ -83,6 +84,7 @@ SQL> select * from x;
 ----------
 	 3
 ```
+
 Error가 발생하여도 commit 되지 않은 transaction은 그대로 남아 있다.
 
 #### PAS
@@ -231,6 +233,7 @@ Out 변수에 `REFCURSOR` type을 사용하여 여러건의 데이터를 반환�
 2. OUT parameter의 type은 `Type.REF`를 사용한다.
 
 * 예제 코드
+
   ```SQL
   CREATE OR REPLACE
   PROCEDURE get_objects (p_owner    IN  all_objects.owner%TYPE,
@@ -293,16 +296,19 @@ scottdb=> explain execute stmt(7902);
 ### 설정 및 확인 방법
 
 * SQL에서 설정
+  
   ```sql
   set application_name = '프로그램 이름';
   ```
 
 * JDBC의 `conn.setClientInfo()` 메소드 이용
+  
   ```java
   Connection.setClientInfo("ApplicationName", "XXX PROGRAM");
   ```
 
 * 확인 방법
+  
   ```
   edb=# select application_name from pg_stat_activity;
    application_name
@@ -405,11 +411,13 @@ Fetch Size: 100
 JDBC에서 null 값을 입력하는 방법은 `setNull()`을 이용하는 방법과 `setXXX()`을 이용할때 `null`값을 입력하는 방법 2가지가 있다. 하지만 `setInt()`와 같이 primitive type의 경우 null을 입력할 수 없으므로 반드시 `setNull()`을 이용하여야 한다. 이 때 java의 null은 data type이 없지만 SQL의 null은 data type이 있기 때문에 몇 가지 문제가 발생한다.
 
 #### 테스트 테이블
+
 ```
 create table test (name varchar2(100), val1 number, val2 varchar2(10), val3 date);
 ```
 
 #### 테스트 코드
+
 ```java
 import java.sql.*;
 
@@ -530,6 +538,7 @@ public class NullTest
 ```
 
 #### 실행
+
 ```
 $ javac NullTest.java
 $ java -cp .:ojdbc6.jar:edb-jdbc17.jar NullTest
@@ -544,6 +553,7 @@ com.edb.util.PSQLException: ERROR: column "val3" is of type date but expression 
 #### 결과
 
 * Oracle
+  
   ```
   SQL> select * from test;
 
@@ -555,6 +565,7 @@ com.edb.util.PSQLException: ERROR: column "val3" is of type date but expression 
   ```
 
 * PAS
+  
   ```
   edb=# select * from test;
    name  | val1 | val2 | val3
@@ -563,5 +574,6 @@ com.edb.util.PSQLException: ERROR: column "val3" is of type date but expression 
    TEST4 |      |      |
   (2 rows)
   ```
+  
   위의 결과와 같이 PAS는 data type을 까다롭게 check하기 때문에 에러가 발생하게 된다. 따라서 반드시 `setNull()`에 정확한 data type을 지정하여 주거나 쿼리에서 명시적인 casting이 필요하다.
 

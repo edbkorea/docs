@@ -1,5 +1,736 @@
 # Lab: 오라클 쿼리 변환시 특이 사항 
 
+## 기본적인 차이점
+
+### 숫자형 상수 처리
+
+#### Oracle
+
+Oracle에서는 숫자를 기본적으로 number 형으로 처리한다.
+
+```
+SQL> select '2147483647' + 0 from dual;
+
+                          '2147483647'+0
+----------------------------------------
+                              2147483647
+
+SQL> select '2147483647' + 1 from dual;
+
+                          '2147483647'+1
+----------------------------------------
+                              2147483648
+
+SQL> select '9223372036854775807' + 0 from dual;
+
+                 '9223372036854775807'+0
+----------------------------------------
+                     9223372036854775807
+
+SQL> select '9223372036854775807' + 1 from dual;
+
+                 '9223372036854775807'+1
+----------------------------------------
+                     9223372036854775808
+```
+
+#### PAS
+
+PAS에서는 숫자를 크기에 따라 int, bigint, number로 처리한다.
+
+* int: signed 32bit integer(-2147483648 ~ 2147483647)
+* bigint: signed 64bit integer(-9223372036854775808 ~ 9223372036854775807)
+* number/numeric: 가변길이 숫자
+
+```
+edb=# select pg_typeof(2147483647), pg_typeof(2147483648), pg_typeof(9223372036854775808);
+ pg_typeof | pg_typeof | pg_typeof
+-----------+-----------+-----------
+ integer   | bigint    | numeric
+(1 row)
+```
+
+따라서 문자열 상수와 숫자형 상수의 연산시 아래 내용을 주의하여야 한다.
+
+```
+edb=# select '2147483647' + 0 from dual;
+  ?column?
+------------
+ 2147483647
+(1 row)
+
+edb=# select '2147483647' + 1 from dual;
+ERROR:  integer out of range
+edb=# select '2147483647' + 1::bigint from dual;
+  ?column?
+------------
+ 2147483648
+(1 row)
+```
+
+```
+edb=# select '9223372036854775807' + 0 from dual;
+ERROR:  value "9223372036854775807" is out of range for type integer
+LINE 1: select '9223372036854775807' + 0 from dual;
+               ^
+edb=# select '9223372036854775807' + 0::bigint from dual;
+      ?column?
+---------------------
+ 9223372036854775807
+(1 row)
+
+edb=# select '9223372036854775807' + 1::bigint from dual;
+ERROR:  bigint out of range
+edb=# select '9223372036854775807' + 1::numeric from dual;
+      ?column?
+---------------------
+ 9223372036854775808
+(1 row)
+```
+
+### 문자열 형 처리
+
+문자열 형 처리는 Oracle과 크게 다르지 않으나 `CHAR`의 경우 오라클과 다르게 뒤에 자동으로 공백 문자가 붙지 않는다.
+
+```
+create table test2 (id number, val1 varchar(10), val2 char(10), val3 varchar2(10));
+insert into test2 values (1, 'abc', 'abc', 'abc');
+insert into test2 values (2, 'abc    ', 'abc    ', 'abc    ');
+insert into test2 values (3, '    abc', '    abc', '    abc');
+insert into test2 values (4, '  abc  ', '  abc  ', '  abc  ');
+
+```
+
+#### Oracle
+
+```
+SQL> select * from test2;
+        ID VAL1       VAL2       VAL3
+---------- ---------- ---------- ----------
+         1 abc        abc        abc
+         2 abc        abc        abc
+         3     abc        abc        abc
+         4   abc        abc        abc
+
+SQL> select id, length(val1), length(val2), length(val3) from test2;
+        ID LENGTH(VAL1) LENGTH(VAL2) LENGTH(VAL3)
+---------- ------------ ------------ ------------
+         1            3           10            3
+         2            7           10            7
+         3            7           10            7
+         4            7           10            7
+```
+
+#### PAS
+
+```
+edb=# select * from test2;
+ id |  val1   |    val2    |  val3
+----+---------+------------+---------
+  1 | abc     | abc        | abc
+  2 | abc     | abc        | abc
+  3 |     abc |     abc    |     abc
+  4 |   abc   |   abc      |   abc
+
+edb=# select id, length(val1), length(val2), length(val3) from test2;
+ id | length | length | length
+----+--------+--------+--------
+  1 |      3 |      3 |      3
+  2 |      7 |      3 |      7
+  3 |      7 |      7 |      7
+  4 |      7 |      5 |      7
+```
+
+### Date type
+
+#### `SYSDATE` & `now()`, `current_timestamp`, `localtimestamp`
+
+  * sysdate는 오라클 호환성 기능으로 제공되어 사용이 가능
+  * now() 함수의 경우, 트랜잭션으로 묶이게되면 트랜잭션 동안 트랜잭션이 시작된 시점으로 시간이 고정됨
+
+  ```sql
+  select sysdate, now, current_timestamp, localtimestamp;
+  select pg_sleep(1);
+  select sysdate, now, current_timestamp, localtimestamp;
+  ```
+
+  Auto commit 상태
+
+  ```
+  -[ RECORD 1 ]-----+--------------------------------
+  sysdate           | 16-FEB-16 14:44:09
+  now               | 16-FEB-16 14:44:09.28651 +09:00
+  current_timestamp | 16-FEB-16 14:44:09.28651 +09:00
+  localtimestamp    | 16-FEB-16 14:44:09.286643
+
+  -[ RECORD 1 ]
+  pg_sleep |
+
+  -[ RECORD 1 ]-----+---------------------------------
+  sysdate           | 16-FEB-16 14:44:10
+  now               | 16-FEB-16 14:44:10.287492 +09:00
+  current_timestamp | 16-FEB-16 14:44:10.287492 +09:00
+  localtimestamp    | 16-FEB-16 14:44:10.287646
+  ```
+	
+  명시적으로 TX를 시작한 경우. `now()`는 TX의 시작시간에 고정됨
+
+  ```
+  BEGIN;
+
+  -[ RECORD 1 ]-----+---------------------------------
+  sysdate           | 16-FEB-16 14:44:10
+  now               | 16-FEB-16 14:44:10.287806 +09:00
+  current_timestamp | 16-FEB-16 14:44:10.287899 +09:00
+  localtimestamp    | 16-FEB-16 14:44:10.288149
+
+  -[ RECORD 1 ]
+  pg_sleep |
+
+  -[ RECORD 1 ]-----+---------------------------------
+  sysdate           | 16-FEB-16 14:44:11
+  now               | 16-FEB-16 14:44:10.287806 +09:00
+  current_timestamp | 16-FEB-16 14:44:11.290238 +09:00
+  localtimestamp    | 16-FEB-16 14:44:11.290355
+
+  COMMIT;
+  ```
+
+#### Interval truncation
+
+PAS에서는 날짜간의 연산 결과가 interval type인데 interval type은 `trunc()`함수를 사용할 수 없다.
+
+##### Oracle
+
+```sql
+SQL> select (sysdate + 1 + 1/24) - sysdate from dual;
+
+(SYSDATE+1+1/24)-SYSDATE
+------------------------
+	      1.04166667
+
+SQL> select trunc((sysdate + 1 + 1/24) - sysdate) from dual;
+
+TRUNC((SYSDATE+1+1/24)-SYSDATE)
+-------------------------------
+			      1
+```
+
+##### PAS
+
+```sql
+edb=# select (sysdate + 1 + 1/24) - sysdate from dual;
+    ?column?
+----------------
+ 1 day 01:00:00
+(1 row)
+
+edb=# select trunc((sysdate + 1 + 1/24) - sysdate) from dual;
+ERROR:  function trunc(interval) does not exist
+LINE 1: select trunc((sysdate + 1 + 1/24) - sysdate) from dual;
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+```
+
+이 경우 `date_part()` 함수를 이용할 수 있다.
+
+```sql
+edb=# select date_part('days', (sysdate + 1 + 1/24) - sysdate) from dual;
+ date_part
+-----------
+         1
+(1 row)
+```
+
+첫번째 parameter에 `microseconds`, `milliseconds`, `second`, `minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`, `decade`, `century`, `millennium`등을 지정하여 원하는 값을 얻을 수 있다.
+
+### `NULL` 처리
+
+#### `''` 처리
+
+* Null값이 포함된 연산은 결과가 `NULL`
+* EDB PAS에서는 오라클과 동일하게 `'TEXT'||NULL` = `'TEXT'`
+* 오라클에서는 `''` 값을 NULL로 인식하나 PAS에서는 값 (공백)으로 인식
+* 오라클은 Date 형 타입에 입력 시 `''`을 입력하면 `NULL`로 입력되지만, PAS에서는 `''` 사용 불가. 명시적으로 `NULL` 로 입력해야함
+* 예시
+  ```SQL
+  INSERT INTO test VALUES ('', NULL);
+  ```
+
+  | SQL                                         | ORACLE | EDB PAS |
+  |---------------------------------------------|--------|---------|
+  | `select count(*) from test where a = ''`    |    0   |    1    |
+  | `select count(*) from test where a is null` |    1   |    0    |
+  | `select count(*) from test where b = ''`    |    0   |    0    |
+  | `select count(*) from test where b is null` |    1   |    1    |
+
+#### `NULL`과 Index
+
+* EDB PAS에서는 null도 index에 포함 된다.
+
+  ```
+  edb=# create table null_idx as select generate_series(1,1000) x;
+  SELECT 1000
+  edb=#
+  edb=# create unique index idx_null_idx on null_idx (x);
+  CREATE INDEX
+  edb=#
+  edb=# insert into null_idx values (null);
+  INSERT 0 1
+  edb=# insert into null_idx values (null);
+  INSERT 0 1
+  edb=#
+  edb=# explain analyze select * from null_idx where x=1;
+                                                           QUERY PLAN
+  ----------------------------------------------------------------------------------------------------------------------------
+   Index Only Scan using idx_null_idx on null_idx  (cost=0.28..8.29 rows=1 width=4) (actual time=0.049..0.050 rows=1 loops=1)
+     Index Cond: (x = 1)
+     Heap Fetches: 1
+   Planning time: 0.092 ms
+   Execution time: 0.087 ms
+  (5 rows)
+
+  edb=#
+  edb=# explain analyze select * from null_idx where x is null;
+                                                           QUERY PLAN
+  ----------------------------------------------------------------------------------------------------------------------------
+   Index Only Scan using idx_null_idx on null_idx  (cost=0.28..4.29 rows=1 width=4) (actual time=0.021..0.024 rows=2 loops=1)
+     Index Cond: (x IS NULL)
+     Heap Fetches: 2
+   Planning time: 0.070 ms
+   Execution time: 0.048 ms
+  (5 rows)
+
+  edb=#
+  ```
+
+  모든 index type에 해당되는 것은 아니며 각 index type 별로 null 값에 대한 indexing을 지원하는 지 여부는 아래와 같이 확인할 수 있다.
+  
+  ```
+  edb=# select amname, amsearchnulls from pg_am;
+   amname | amsearchnulls
+  --------+---------------
+   btree  | t
+   hash   | f
+   gist   | t
+   gin    | f
+   spgist | t
+   brin   | t
+  (6 rows)
+
+  edb=#
+  ```
+
+  - amname : Name of the access method
+  - amsearchnulls :  "Does the access method support IS NULL/NOT NULL searches?"
+  - btree 타입의 인덱스에서는 인덱스 스캔을 통해서 null 검색이 가능
+
+### 예약어
+
+Ansi SQL 키워드 및 PAS 전용 키워드는 Alias명이나 변수 명으로 직접 사용 불가.
+
+* 예시
+
+  ```
+  edb=# select a vacuum, b table from test;
+  ERROR:  syntax error at or near "vacuum"
+  LINE 1: select a vacuum, b table from test;
+                   ^
+  edb=# select a as vacuum, b as table, a "vacuum", b "table" from test;
+   vacuum | table | vacuum | table
+  --------+-------+--------+-------
+        1 | test1 |      1 | test1
+        2 | test2 |      2 | test2
+  (2 rows)
+  ```
+
+* 예약어 목록
+  
+  http://www.postgresql.org/docs/9.5/static/sql-keywords-appendix.html
+
+### 식별자 대소문자 구별
+
+EDB PAS 역시 오라클과 마찬가지로 테이블, 컬럼 명 등의 식별자에 대해 대소문자를 가리지 않는다.
+
+```
+edb=# create table test (a integer, B integer);
+CREATE TABLE
+edb=# select A, b from Test;
+ a | b
+---+---
+(0 rows)
+```
+
+하지만 오라클과 반대로 내부적으로 모든 식별자를 소문자로 저장하기 때문에 `""`를 이용하여 대소문자를 구별하도록 처리한 경우 아래와 같이 차이가 발생한다. 일반적인 경우 문제가 되지 않으나 외부 툴을 이용하여 DDL을 생성하는 경우 식별자가 `""`로 감싸여져 있는 경우가 있으므로 주의가 필요하다.
+
+#### 예제
+
+* 테이블 생성
+
+	```
+  create table "test" ("A" integer, "B" integer);
+  insert into "test" values (1, 1);
+  ```
+
+* Oracle
+
+  오라클은 기본적으로 식별자를 대문자로 처리한다. 따라서 `test`를 조회하는 경우 `"TEST"`를 찾으려고 하지만 `"test"`만 존제하기 때문에 에러가 발생한다.
+
+  ```
+  SQL> select * from test;
+  select * from test
+                *
+  ERROR at line 1:
+  ORA-00942: table or view does not exist
+
+  SQL> select * from "test";
+
+     A	    B
+  ---------- ----------
+     1	    1
+
+  SQL> select * from "TEST";
+  select * from "TEST"
+                *
+  ERROR at line 1:
+  ORA-00942: table or view does not exist
+
+  SQL> select a, b from "test";
+
+     A	    B
+  ---------- ----------
+     1	    1
+
+  SQL> select "A", "B" from "test";
+
+     A	    B
+  ---------- ----------
+     1	    1
+
+  SQL> select "a", "b" from "test";
+  select "a", "b" from "test"
+              *
+  ERROR at line 1:
+  ORA-00904: "b": invalid identifier
+  ```
+
+* PAS
+  PAS는 기본적으로 소문자로 처리하며 `test`를 조회하는 경우 `"test"`를 찾으려고 한다.
+
+  ```
+  edb=# select * from test;
+   A | B
+  ---+---
+   1 | 1
+  (1 row)
+
+  edb=# select * from "test";
+   A | B
+  ---+---
+   1 | 1
+  (1 row)
+
+  edb=# select * from "TEST";
+  ERROR:  relation "TEST" does not exist
+  LINE 1: select * from "TEST";
+                        ^
+  edb=# select a, b from "test";
+  ERROR:  column "a" does not exist
+  LINE 1: select a, b from "test";
+                 ^
+  edb=# select "A", "B" from "test";
+   A | B
+  ---+---
+   1 | 1
+  (1 row)
+
+  edb=# select "a", "b" from "test";
+  ERROR:  column "a" does not exist
+  LINE 1: select "a", "b" from "test";
+                 ^
+  ```
+
+## PostgreSQL 고유 기능
+### Domain Data Type
+
+**예제**: TEST1 과 TEST2 테이블의 컬럼은 아래 CHECK 제약 조건에 의해 VARCHAR 형이지만 2자리 숫자 타입의 값만 받아들여야함!
+
+```
+edb=# CREATE TABLE TEST1 (COL1 varchar(2)  CHECK (COL1 ~'[[:digit:]]{2}'));  -- 정규식 (regular expression)
+CREATE TABLE
+edb=#
+edb=# CREATE TABLE TEST2 (COL1 varchar(2)  CHECK (COL1 ~'[[:digit:]]{2}'));
+CREATE TABLE
+edb=#
+edb=# INSERT INTO TEST1 VALUES('01');
+INSERT 0 1
+edb=#
+edb=# INSERT INTO TEST2 VALUES('12');
+INSERT 0 1
+edb=#
+edb=# INSERT INTO TEST1 VALUES('9'); -- check 조건에 의해 에러발생
+ERROR:  new row for relation "test1" violates check constraint "test1_col1_check"
+DETAIL:  Failing row contains (9).
+edb=#
+edb=# SELECT * FROM TEST1;
+col1
+------
+01
+(1 row)
+
+edb=# SELECT * FROM TEST2;
+col1
+------
+12
+(1 row)
+
+edb=#
+```
+
+위 CHECK 조건을 만족하는 컬럼값이 많은 테이블에서 정의되어야 한다면, 매번 CHECK 조건을 적어주기 매우 번거로움. 이때 DOMAIN data type을 활용
+
+```
+edb=# CREATE DOMAIN DIGITV AS VARCHAR(2) CHECK( VALUE ~'[[:digit:]]{2}');
+CREATE DOMAIN
+edb=#
+edb=# DROP TABLE TEST1;
+DROP TABLE
+edb=# DROP TABLE TEST2;
+DROP TABLE
+edb=#
+edb=# CREATE TABLE TEST1(COL1 DIGITV);
+CREATE TABLE
+edb=# CREATE TABLE TEST2(COL1 DIGITV);
+CREATE TABLE
+edb=#
+edb=# INSERT INTO TEST1 VALUES('02');
+INSERT 0 1
+edb=# INSERT INTO TEST2 VALUES('13');
+INSERT 0 1
+edb=#
+edb=# \d test1
+    Table "public.test1"
+ Column |  Type  | Modifiers
+--------+--------+-----------
+ col1   | digitv |
+edb=#
+edb=# \d test2
+    Table "public.test2"
+ Column |  Type  | Modifiers
+--------+--------+-----------
+ col1   | digitv |
+edb=#
+```
+
+### UPDATE Returning
+
+```
+edb=# create table emp2 as select * from emp;
+edb=#
+edb=# select * from emp2;
+ empno | ename  |    job    | mgr  |      hiredate      |   sal   |  comm   | deptno
+-------+--------+-----------+------+--------------------+---------+---------+--------
+  7369 | SMITH  | CLERK     | 7902 | 17-DEC-80 00:00:00 |  800.00 |         |     20
+  7499 | ALLEN  | SALESMAN  | 7698 | 20-FEB-81 00:00:00 | 1600.00 |  300.00 |     30
+  7521 | WARD   | SALESMAN  | 7698 | 22-FEB-81 00:00:00 | 1250.00 |  500.00 |     30
+  7566 | JONES  | MANAGER   | 7839 | 02-APR-81 00:00:00 | 2975.00 |         |     20
+  7654 | MARTIN | SALESMAN  | 7698 | 28-SEP-81 00:00:00 | 1250.00 | 1400.00 |     30
+  7698 | BLAKE  | MANAGER   | 7839 | 01-MAY-81 00:00:00 | 2850.00 |         |     30
+  7782 | CLARK  | MANAGER   | 7839 | 09-JUN-81 00:00:00 | 2450.00 |         |     10
+  7788 | SCOTT  | ANALYST   | 7566 | 19-APR-87 00:00:00 | 3000.00 |         |     20
+  7839 | KING   | PRESIDENT |      | 17-NOV-81 00:00:00 | 5000.00 |         |     10
+  7844 | TURNER | SALESMAN  | 7698 | 08-SEP-81 00:00:00 | 1500.00 |    0.00 |     30
+  7876 | ADAMS  | CLERK     | 7788 | 23-MAY-87 00:00:00 | 1100.00 |         |     20
+  7900 | JAMES  | CLERK     | 7698 | 03-DEC-81 00:00:00 |  950.00 |         |     30
+  7902 | FORD   | ANALYST   | 7566 | 03-DEC-81 00:00:00 | 3000.00 |         |     20
+  7934 | MILLER | CLERK     | 7782 | 23-JAN-82 00:00:00 | 1300.00 |         |     10
+(14 rows)
+
+edb=#
+edb=# update emp2 set sal=sal+100 where sal < 1000 returning *;
+ empno | ename |  job  | mgr  |      hiredate      |   sal   | comm | deptno
+-------+-------+-------+------+--------------------+---------+------+--------
+  7369 | SMITH | CLERK | 7902 | 17-DEC-80 00:00:00 |  900.00 |      |     20
+  7900 | JAMES | CLERK | 7698 | 03-DEC-81 00:00:00 | 1050.00 |      |     30
+(2 rows)
+
+UPDATE 2
+edb=#
+```
+
+오라클 경우에도 UPDATE .. RETURNING 문을 지원하나 PL/SQL 등에서만 사용해야함
+
+### Distinct On
+
+a 컬럼에 대해 distinct 한 값 로우만을 가져오는 동시에, b 컬럼까지 한번에 select 가능
+
+```
+edb=# create table dist_on (a varchar, b int);
+CREATE TABLE
+edb=#
+edb=# insert into dist_on values ('lion', 1);
+INSERT 0 1
+edb=# insert into dist_on values ('lion', 2);
+INSERT 0 1
+edb=# insert into dist_on values ('tiger', 2);
+INSERT 0 1
+edb=# insert into dist_on values ('tiger', 1);
+INSERT 0 1
+edb=# insert into dist_on values ('rabbit', 1);
+INSERT 0 1
+edb=# insert into dist_on values ('rabbit', 2);
+INSERT 0 1
+edb=# insert into dist_on values ('rabbit', 1);
+INSERT 0 1
+edb=#
+edb=# table dist_on ;
+   a    | b
+--------+---
+ lion   | 1
+ lion   | 2
+ tiger  | 2
+ tiger  | 1
+ rabbit | 1
+ rabbit | 2
+ rabbit | 1
+(7 rows)
+
+edb=#
+edb=# select distinct a, b from dist_on order by 1,2;
+   a    | b
+--------+---
+ lion   | 1
+ lion   | 2
+ rabbit | 1
+ rabbit | 2
+ tiger  | 1
+ tiger  | 2
+(6 rows)
+
+edb=#
+edb=# select distinct on (a) a, b from dist_on order by 1,2;
+   a    | b
+--------+---
+ lion   | 1
+ rabbit | 1
+ tiger  | 1
+(3 rows)
+
+edb=#
+```
+
+### Regular Expression
+
+```
+edb=# create table reg_exp (a varchar);
+CREATE TABLE
+edb=#
+edb=# insert into reg_exp values ('가나다');
+INSERT 0 1
+edb=# insert into reg_exp values (100);
+INSERT 0 1
+edb=# insert into reg_exp values (2);
+INSERT 0 1
+edb=# insert into reg_exp values ('a한글123');
+INSERT 0 1
+edb=# insert into reg_exp values ('999test');
+INSERT 0 1
+edb=# insert into reg_exp values ('a89adf33');
+INSERT 0 1
+edb=#
+edb=# table reg_exp ;
+    a
+----------
+ 가나다
+ 100
+ 2
+ a한글123
+ 999test
+ a89adf33
+(6 rows)
+
+edb=#
+edb=# -- 로우중에서 숫자가 하나라도 들어가 있는 로우만 추출
+edb=# select * from reg_exp where a ~ '[0-9]+';
+    a
+----------
+ 100
+ 2
+ a한글123
+ 999test
+ a89adf33
+(5 rows)
+
+edb=#
+edb=# -- 숫자가 하나도 들어가 있지 않은 로우만 추출
+edb=# select * from reg_exp where a !~ '[0-9]+';
+   a
+--------
+ 가나다
+(1 row)
+
+edb=#
+edb=# -- 데이터중 숫자부분만 추출
+edb=# select a, regexp_matches (a, '[0-9]+') from reg_exp;
+    a     | regexp_matches
+----------+----------------
+ 100      | {100}
+ 2        | {2}
+ a한글123  | {123}
+ 999test  | {999}
+ a89adf33 | {89}
+(5 rows)
+
+edb=#
+edb=# -- regexp_matches는 배열로 값을 리턴. 배열중 밸류값만 추출
+edb=# select a, (regexp_matches (a, '[0-9]+'))[1] from reg_exp;
+    a     | regexp_matches
+----------+----------------
+ 100      | 100
+ 2        | 2
+ a한글123  | 123
+ 999test  | 999
+ a89adf33 | 89
+(5 rows)
+
+edb=#
+edb=# -- 데이터중 모든 숫자부분 추출
+edb=# select a, regexp_matches (a, '[0-9]+', 'g') from reg_exp;
+    a     | regexp_matches
+----------+----------------
+ 100      | {100}
+ 2        | {2}
+ a한글123  | {123}
+ 999test  | {999}
+ a89adf33 | {89}
+ a89adf33 | {33}
+(6 rows)
+
+edb=#
+edb=# -- 배열에서 밸류만 추출
+edb=# select a, (regexp_matches (a, '[0-9]+', 'g'))[1] from reg_exp;
+    a     | regexp_matches
+----------+----------------
+ 100      | 100
+ 2        | 2
+ a한글123  | 123
+ 999test  | 999
+ a89adf33 | 89
+ a89adf33 | 33
+(6 rows)
+
+edb=#
+edb=# -- 숫자만으로 이루어진 로우만 필터링
+edb=# select a from reg_exp where a ~'^[0-9]+$';
+  a
+-----
+ 100
+ 2
+(2 rows)
+
+edb=#
+```
+
 ## `FIRST`/`LAST` 쿼리 변환
 ### 설명
 
@@ -318,6 +1049,7 @@ Grant                               7000       7000       7000
 하지만 이 함수가 꼭 필요해서 사용되기 보다는 불필요하게 사용되는 경우가 많다. 반드시 이런 류의 분석이 필요한 경우가 아니라면 좀더 직관적인 방식으로 변환하는 것이 더 편할 수 있다.
 
 #### Oracle
+
 ```sql
 SELECT
      transactionid,
@@ -326,7 +1058,9 @@ SELECT
  WHERE accountId = 1
  GROUP BY transactionid;
 ```
+
 #### PAS
+
 ```sql
 SELECT transactionid, max(COMCreditCode) as COMCreditCode
 FROM (
@@ -517,6 +1251,7 @@ test=# select x as level from generate_series(1,5) x;
 PAS에서는 `MERGE INTO` 구문을 지원하지 않는다. 9.5 버전에 추가된 `INSERT ON CONFLICT` 구문을 이용하거나 CTE를 이용하여 구현 할 수 있다.
 
 #### Oracle
+
 ```sql
 MERGE INTO myTable2 m
 USING myTable d ON (m.pid = d.pid)
@@ -528,6 +1263,7 @@ WHEN NOT MATCHED THEN
 
 #### PAS
 ##### 9.4 이전 방식
+
 ```sql
 WITH upsert AS 
 (
@@ -551,7 +1287,9 @@ DO UPDATE SET sales = sales + EXCLUDED.sales , status = EXCLUDED.status
 ```
 
 #### 실습
+
 아래 쿼리를 변환하여 보자.
+
 ```sql
 create table dept2 (like dept);
 insert into dept2 values (30, 'SALES', 'SEOUL'), (50, 'SE', 'JAPAN');
@@ -677,729 +1415,4 @@ edb=# select ARRAY_AGG(job order by mgr) from emp;
 -----------------------------------------------------------------------------------------------------------------
  {ANALYST,ANALYST,SALESMAN,SALESMAN,SALESMAN,CLERK,SALESMAN,CLERK,CLERK,MANAGER,MANAGER,MANAGER,CLERK,PRESIDENT}
 (1 row)
-```
-
-## 기타
-
-### 숫자형 상수 처리
-
-#### Oracle
-
-Oracle에서는 숫자를 기본적으로 number 형으로 처리한다.
-
-```
-SQL> select '2147483647' + 0 from dual;
-
-                          '2147483647'+0
-----------------------------------------
-                              2147483647
-
-SQL> select '2147483647' + 1 from dual;
-
-                          '2147483647'+1
-----------------------------------------
-                              2147483648
-
-SQL> select '9223372036854775807' + 0 from dual;
-
-                 '9223372036854775807'+0
-----------------------------------------
-                     9223372036854775807
-
-SQL> select '9223372036854775807' + 1 from dual;
-
-                 '9223372036854775807'+1
-----------------------------------------
-                     9223372036854775808
-```
-
-#### PAS
-
-PAS에서는 숫자를 크기에 따라 int, bigint, number로 처리한다.
-* int: signed 32bit integer(-2147483648 ~ 2147483647)
-* bigint: signed 64bit integer(-9223372036854775808 ~ 9223372036854775807)
-* number/numeric: 가변길이 숫자
-
-```
-edb=# select pg_typeof(2147483647), pg_typeof(2147483648), pg_typeof(9223372036854775808);
- pg_typeof | pg_typeof | pg_typeof
------------+-----------+-----------
- integer   | bigint    | numeric
-(1 row)
-```
-
-따라서 문자열 상수와 숫자형 상수의 연산시 아래 내용을 주의하여야 한다.
-
-```
-edb=# select '2147483647' + 0 from dual;
-  ?column?
-------------
- 2147483647
-(1 row)
-
-edb=# select '2147483647' + 1 from dual;
-ERROR:  integer out of range
-edb=# select '2147483647' + 1::bigint from dual;
-  ?column?
-------------
- 2147483648
-(1 row)
-```
-
-```
-edb=# select '9223372036854775807' + 0 from dual;
-ERROR:  value "9223372036854775807" is out of range for type integer
-LINE 1: select '9223372036854775807' + 0 from dual;
-               ^
-edb=# select '9223372036854775807' + 0::bigint from dual;
-      ?column?
----------------------
- 9223372036854775807
-(1 row)
-
-edb=# select '9223372036854775807' + 1::bigint from dual;
-ERROR:  bigint out of range
-edb=# select '9223372036854775807' + 1::numeric from dual;
-      ?column?
----------------------
- 9223372036854775808
-(1 row)
-```
-
-### 문자열 형 처리
-
-문자열 형 처리는 Oracle과 크게 다르지 않으나 `CHAR`의 경우 오라클과 다르게 뒤에 자동으로 공백 문자가 붙지 않는다.
-
-```
-create table test2 (id number, val1 varchar(10), val2 char(10), val3 varchar2(10));
-insert into test2 values (1, 'abc', 'abc', 'abc');
-insert into test2 values (2, 'abc    ', 'abc    ', 'abc    ');
-insert into test2 values (3, '    abc', '    abc', '    abc');
-insert into test2 values (4, '  abc  ', '  abc  ', '  abc  ');
-
-```
-
-#### Oracle
-
-```
-SQL> select * from test2;
-        ID VAL1       VAL2       VAL3
----------- ---------- ---------- ----------
-         1 abc        abc        abc
-         2 abc        abc        abc
-         3     abc        abc        abc
-         4   abc        abc        abc
-
-SQL> select id, length(val1), length(val2), length(val3) from test2;
-        ID LENGTH(VAL1) LENGTH(VAL2) LENGTH(VAL3)
----------- ------------ ------------ ------------
-         1            3           10            3
-         2            7           10            7
-         3            7           10            7
-         4            7           10            7
-```
-
-#### PAS
-
-```
-edb=# select * from test2;
- id |  val1   |    val2    |  val3
-----+---------+------------+---------
-  1 | abc     | abc        | abc
-  2 | abc     | abc        | abc
-  3 |     abc |     abc    |     abc
-  4 |   abc   |   abc      |   abc
-
-edb=# select id, length(val1), length(val2), length(val3) from test2;
- id | length | length | length
-----+--------+--------+--------
-  1 |      3 |      3 |      3
-  2 |      7 |      3 |      7
-  3 |      7 |      7 |      7
-  4 |      7 |      5 |      7
-```
-
-### Date type
-
-#### `SYSDATE` & `now()`, `current_timestamp`, `localtimestamp`
-
-  * sysdate는 오라클 호환성 기능으로 제공되어 사용이 가능
-  * now() 함수의 경우, 트랜잭션으로 묶이게되면 트랜잭션 동안 트랜잭션이 시작된 시점으로 시간이 고정됨
-
-  ```sql
-  select sysdate, now, current_timestamp, localtimestamp;
-  select pg_sleep(1);
-  select sysdate, now, current_timestamp, localtimestamp;
-  ```
-  Auto commit 상태
-  ```
-  -[ RECORD 1 ]-----+--------------------------------
-  sysdate           | 16-FEB-16 14:44:09
-  now               | 16-FEB-16 14:44:09.28651 +09:00
-  current_timestamp | 16-FEB-16 14:44:09.28651 +09:00
-  localtimestamp    | 16-FEB-16 14:44:09.286643
-
-  -[ RECORD 1 ]
-  pg_sleep |
-
-  -[ RECORD 1 ]-----+---------------------------------
-  sysdate           | 16-FEB-16 14:44:10
-  now               | 16-FEB-16 14:44:10.287492 +09:00
-  current_timestamp | 16-FEB-16 14:44:10.287492 +09:00
-  localtimestamp    | 16-FEB-16 14:44:10.287646
-  ```
-	
-  명시적으로 TX를 시작한 경우. `now()`는 TX의 시작시간에 고정됨
-  ```
-  BEGIN;
-
-  -[ RECORD 1 ]-----+---------------------------------
-  sysdate           | 16-FEB-16 14:44:10
-  now               | 16-FEB-16 14:44:10.287806 +09:00
-  current_timestamp | 16-FEB-16 14:44:10.287899 +09:00
-  localtimestamp    | 16-FEB-16 14:44:10.288149
-
-  -[ RECORD 1 ]
-  pg_sleep |
-
-  -[ RECORD 1 ]-----+---------------------------------
-  sysdate           | 16-FEB-16 14:44:11
-  now               | 16-FEB-16 14:44:10.287806 +09:00
-  current_timestamp | 16-FEB-16 14:44:11.290238 +09:00
-  localtimestamp    | 16-FEB-16 14:44:11.290355
-
-  COMMIT;
-  ```
-
-#### Interval truncation
-
-PAS에서는 날짜간의 연산 결과가 interval type인데 interval type은 `trunc()`함수를 사용할 수 없다.
-
-##### Oracle
-
-```sql
-SQL> select (sysdate + 1 + 1/24) - sysdate from dual;
-
-(SYSDATE+1+1/24)-SYSDATE
-------------------------
-	      1.04166667
-
-SQL> select trunc((sysdate + 1 + 1/24) - sysdate) from dual;
-
-TRUNC((SYSDATE+1+1/24)-SYSDATE)
--------------------------------
-			      1
-```
-
-##### PAS
-
-```sql
-edb=# select (sysdate + 1 + 1/24) - sysdate from dual;
-    ?column?
-----------------
- 1 day 01:00:00
-(1 row)
-
-edb=# select trunc((sysdate + 1 + 1/24) - sysdate) from dual;
-ERROR:  function trunc(interval) does not exist
-LINE 1: select trunc((sysdate + 1 + 1/24) - sysdate) from dual;
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-```
-
-이 경우 `date_part()` 함수를 이용할 수 있다.
-
-```sql
-edb=# select date_part('days', (sysdate + 1 + 1/24) - sysdate) from dual;
- date_part
------------
-         1
-(1 row)
-```
-
-첫번째 parameter에 `microseconds`, `milliseconds`, `second`, `minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`, `decade`, `century`, `millennium`등을 지정하여 원하는 값을 얻을 수 있다.
-
-### `NULL` 처리
-
-#### `''` 처리
-
-* Null값이 포함된 연산은 결과가 `NULL`
-* EDB PAS에서는 오라클과 동일하게 `'TEXT'||NULL` = `'TEXT'`
-* 오라클에서는 `''` 값을 NULL로 인식하나 PAS에서는 값 (공백)으로 인식
-* 오라클은 Date 형 타입에 입력 시 `''`을 입력하면 `NULL`로 입력되지만, PAS에서는 `''` 사용 불가. 명시적으로 `NULL` 로 입력해야함
-* 예시
-  ```SQL
-  INSERT INTO test VALUES ('', NULL);
-  ```
-
-  | SQL                                         | ORACLE | EDB PAS |
-  |---------------------------------------------|--------|---------|
-  | `select count(*) from test where a = ''`    |    0   |    1    |
-  | `select count(*) from test where a is null` |    1   |    0    |
-  | `select count(*) from test where b = ''`    |    0   |    0    |
-  | `select count(*) from test where b is null` |    1   |    1    |
-
-#### `NULL`과 Index
-
-* EDB PAS에서는 null도 index에 포함 된다.
-
-  ```
-  edb=# create table null_idx as select generate_series(1,1000) x;
-  SELECT 1000
-  edb=#
-  edb=# create unique index idx_null_idx on null_idx (x);
-  CREATE INDEX
-  edb=#
-  edb=# insert into null_idx values (null);
-  INSERT 0 1
-  edb=# insert into null_idx values (null);
-  INSERT 0 1
-  edb=#
-  edb=# explain analyze select * from null_idx where x=1;
-                                                           QUERY PLAN
-  ----------------------------------------------------------------------------------------------------------------------------
-   Index Only Scan using idx_null_idx on null_idx  (cost=0.28..8.29 rows=1 width=4) (actual time=0.049..0.050 rows=1 loops=1)
-     Index Cond: (x = 1)
-     Heap Fetches: 1
-   Planning time: 0.092 ms
-   Execution time: 0.087 ms
-  (5 rows)
-
-  edb=#
-  edb=# explain analyze select * from null_idx where x is null;
-                                                           QUERY PLAN
-  ----------------------------------------------------------------------------------------------------------------------------
-   Index Only Scan using idx_null_idx on null_idx  (cost=0.28..4.29 rows=1 width=4) (actual time=0.021..0.024 rows=2 loops=1)
-     Index Cond: (x IS NULL)
-     Heap Fetches: 2
-   Planning time: 0.070 ms
-   Execution time: 0.048 ms
-  (5 rows)
-
-  edb=#
-  ```
-
-  모든 index type에 해당되는 것은 아니며 각 index type 별로 null 값에 대한 indexing을 지원하는 지 여부는 아래와 같이 확인할 수 있다.
-  
-  ```
-  edb=# select amname, amsearchnulls from pg_am;
-   amname | amsearchnulls
-  --------+---------------
-   btree  | t
-   hash   | f
-   gist   | t
-   gin    | f
-   spgist | t
-   brin   | t
-  (6 rows)
-
-  edb=#
-  ```
-
-  - amname : Name of the access method
-  - amsearchnulls :  "Does the access method support IS NULL/NOT NULL searches?"
-  - btree 타입의 인덱스에서는 인덱스 스캔을 통해서 null 검색이 가능
-
-### 예약어
-
-Ansi SQL 키워드 및 PAS 전용 키워드는 Alias명이나 변수 명으로 직접 사용 불가.
-
-* 예시
-  ```
-  edb=# select a vacuum, b table from test;
-  ERROR:  syntax error at or near "vacuum"
-  LINE 1: select a vacuum, b table from test;
-                   ^
-  edb=# select a as vacuum, b as table, a "vacuum", b "table" from test;
-   vacuum | table | vacuum | table
-  --------+-------+--------+-------
-        1 | test1 |      1 | test1
-        2 | test2 |      2 | test2
-  (2 rows)
-  ```
-
-* 예약어 목록
-	http://www.postgresql.org/docs/9.5/static/sql-keywords-appendix.html
-
-### 식별자 대소문자 구별
-
-EDB PAS 역시 오라클과 마찬가지로 테이블, 컬럼 명 등의 식별자에 대해 대소문자를 가리지 않는다.
-
-```
-edb=# create table test (a integer, B integer);
-CREATE TABLE
-edb=# select A, b from Test;
- a | b
----+---
-(0 rows)
-```
-
-하지만 오라클과 반대로 내부적으로 모든 식별자를 소문자로 저장하기 때문에 `""`를 이용하여 대소문자를 구별하도록 처리한 경우 아래와 같이 차이가 발생한다. 일반적인 경우 문제가 되지 않으나 외부 툴을 이용하여 DDL을 생성하는 경우 식별자가 `""`로 감싸여져 있는 경우가 있으므로 주의가 필요하다.
-
-#### 예제
-
-* 테이블 생성
-
-	```
-  create table "test" ("A" integer, "B" integer);
-  insert into "test" values (1, 1);
-  ```
-
-* Oracle
-
-  오라클은 기본적으로 식별자를 대문자로 처리한다. 따라서 `test`를 조회하는 경우 `"TEST"`를 찾으려고 하지만 `"test"`만 존제하기 때문에 에러가 발생한다.
-
-  ```
-  SQL> select * from test;
-  select * from test
-                *
-  ERROR at line 1:
-  ORA-00942: table or view does not exist
-
-  SQL> select * from "test";
-
-     A	    B
-  ---------- ----------
-     1	    1
-
-  SQL> select * from "TEST";
-  select * from "TEST"
-                *
-  ERROR at line 1:
-  ORA-00942: table or view does not exist
-
-  SQL> select a, b from "test";
-
-     A	    B
-  ---------- ----------
-     1	    1
-
-  SQL> select "A", "B" from "test";
-
-     A	    B
-  ---------- ----------
-     1	    1
-
-  SQL> select "a", "b" from "test";
-  select "a", "b" from "test"
-              *
-  ERROR at line 1:
-  ORA-00904: "b": invalid identifier
-  ```
-
-* PAS
-	PAS는 기본적으로 소문자로 처리하며 `test`를 조회하는 경우 `"test"`를 찾으려고 한다.
-
-  ```
-  edb=# select * from test;
-   A | B
-  ---+---
-   1 | 1
-  (1 row)
-
-  edb=# select * from "test";
-   A | B
-  ---+---
-   1 | 1
-  (1 row)
-
-  edb=# select * from "TEST";
-  ERROR:  relation "TEST" does not exist
-  LINE 1: select * from "TEST";
-                        ^
-  edb=# select a, b from "test";
-  ERROR:  column "a" does not exist
-  LINE 1: select a, b from "test";
-                 ^
-  edb=# select "A", "B" from "test";
-   A | B
-  ---+---
-   1 | 1
-  (1 row)
-
-  edb=# select "a", "b" from "test";
-  ERROR:  column "a" does not exist
-  LINE 1: select "a", "b" from "test";
-                 ^
-  ```
-
-## PostgreSQL 고유 기능
-### Domain Data Type
-
-**예제**: TEST1 과 TEST2 테이블의 컬럼은 아래 CHECK 제약 조건에 의해 VARCHAR 형이지만 2자리 숫자 타입의 값만 받아들여야함!
-
-```
-edb=# CREATE TABLE TEST1 (COL1 varchar(2)  CHECK (COL1 ~'[[:digit:]]{2}'));  -- 정규식 (regular expression)
-CREATE TABLE
-edb=#
-edb=# CREATE TABLE TEST2 (COL1 varchar(2)  CHECK (COL1 ~'[[:digit:]]{2}'));
-CREATE TABLE
-edb=#
-edb=# INSERT INTO TEST1 VALUES('01');
-INSERT 0 1
-edb=#
-edb=# INSERT INTO TEST2 VALUES('12');
-INSERT 0 1
-edb=#
-edb=# INSERT INTO TEST1 VALUES('9'); -- check 조건에 의해 에러발생
-ERROR:  new row for relation "test1" violates check constraint "test1_col1_check"
-DETAIL:  Failing row contains (9).
-edb=#
-edb=# SELECT * FROM TEST1;
-col1
-------
-01
-(1 row)
-
-edb=# SELECT * FROM TEST2;
-col1
-------
-12
-(1 row)
-
-edb=#
-```
-
-위 CHECK 조건을 만족하는 컬럼값이 많은 테이블에서 정의되어야 한다면, 매번 CHECK 조건을 적어주기 매우 번거로움. 이때 DOMAIN data type을 활용
-
-```
-edb=# CREATE DOMAIN DIGITV AS VARCHAR(2) CHECK( VALUE ~'[[:digit:]]{2}');
-CREATE DOMAIN
-edb=#
-edb=# DROP TABLE TEST1;
-DROP TABLE
-edb=# DROP TABLE TEST2;
-DROP TABLE
-edb=#
-edb=# CREATE TABLE TEST1(COL1 DIGITV);
-CREATE TABLE
-edb=# CREATE TABLE TEST2(COL1 DIGITV);
-CREATE TABLE
-edb=#
-edb=# INSERT INTO TEST1 VALUES('02');
-INSERT 0 1
-edb=# INSERT INTO TEST2 VALUES('13');
-INSERT 0 1
-edb=#
-edb=# \d test1
-    Table "public.test1"
- Column |  Type  | Modifiers
---------+--------+-----------
- col1   | digitv |
-edb=#
-edb=# \d test2
-    Table "public.test2"
- Column |  Type  | Modifiers
---------+--------+-----------
- col1   | digitv |
-edb=#
-```
-
-### UPDATE Returning
-
-```
-edb=# create table emp2 as select * from emp;
-edb=#
-edb=# select * from emp2;
- empno | ename  |    job    | mgr  |      hiredate      |   sal   |  comm   | deptno
--------+--------+-----------+------+--------------------+---------+---------+--------
-  7369 | SMITH  | CLERK     | 7902 | 17-DEC-80 00:00:00 |  800.00 |         |     20
-  7499 | ALLEN  | SALESMAN  | 7698 | 20-FEB-81 00:00:00 | 1600.00 |  300.00 |     30
-  7521 | WARD   | SALESMAN  | 7698 | 22-FEB-81 00:00:00 | 1250.00 |  500.00 |     30
-  7566 | JONES  | MANAGER   | 7839 | 02-APR-81 00:00:00 | 2975.00 |         |     20
-  7654 | MARTIN | SALESMAN  | 7698 | 28-SEP-81 00:00:00 | 1250.00 | 1400.00 |     30
-  7698 | BLAKE  | MANAGER   | 7839 | 01-MAY-81 00:00:00 | 2850.00 |         |     30
-  7782 | CLARK  | MANAGER   | 7839 | 09-JUN-81 00:00:00 | 2450.00 |         |     10
-  7788 | SCOTT  | ANALYST   | 7566 | 19-APR-87 00:00:00 | 3000.00 |         |     20
-  7839 | KING   | PRESIDENT |      | 17-NOV-81 00:00:00 | 5000.00 |         |     10
-  7844 | TURNER | SALESMAN  | 7698 | 08-SEP-81 00:00:00 | 1500.00 |    0.00 |     30
-  7876 | ADAMS  | CLERK     | 7788 | 23-MAY-87 00:00:00 | 1100.00 |         |     20
-  7900 | JAMES  | CLERK     | 7698 | 03-DEC-81 00:00:00 |  950.00 |         |     30
-  7902 | FORD   | ANALYST   | 7566 | 03-DEC-81 00:00:00 | 3000.00 |         |     20
-  7934 | MILLER | CLERK     | 7782 | 23-JAN-82 00:00:00 | 1300.00 |         |     10
-(14 rows)
-
-edb=#
-edb=# update emp2 set sal=sal+100 where sal < 1000 returning *;
- empno | ename |  job  | mgr  |      hiredate      |   sal   | comm | deptno
--------+-------+-------+------+--------------------+---------+------+--------
-  7369 | SMITH | CLERK | 7902 | 17-DEC-80 00:00:00 |  900.00 |      |     20
-  7900 | JAMES | CLERK | 7698 | 03-DEC-81 00:00:00 | 1050.00 |      |     30
-(2 rows)
-
-UPDATE 2
-edb=#
-```
-
-오라클 경우에도 UPDATE .. RETURNING 문을 지원하나 PL/SQL 등에서만 사용해야함
-
-### Distinct On
-
-a 컬럼에 대해 distinct 한 값 로우만을 가져오는 동시에, b 컬럼까지 한번에 select 가능
-
-```
-edb=# create table dist_on (a varchar, b int);
-CREATE TABLE
-edb=#
-edb=# insert into dist_on values ('lion', 1);
-INSERT 0 1
-edb=# insert into dist_on values ('lion', 2);
-INSERT 0 1
-edb=# insert into dist_on values ('tiger', 2);
-INSERT 0 1
-edb=# insert into dist_on values ('tiger', 1);
-INSERT 0 1
-edb=# insert into dist_on values ('rabbit', 1);
-INSERT 0 1
-edb=# insert into dist_on values ('rabbit', 2);
-INSERT 0 1
-edb=# insert into dist_on values ('rabbit', 1);
-INSERT 0 1
-edb=#
-edb=# table dist_on ;
-   a    | b
---------+---
- lion   | 1
- lion   | 2
- tiger  | 2
- tiger  | 1
- rabbit | 1
- rabbit | 2
- rabbit | 1
-(7 rows)
-
-edb=#
-edb=# select distinct a, b from dist_on order by 1,2;
-   a    | b
---------+---
- lion   | 1
- lion   | 2
- rabbit | 1
- rabbit | 2
- tiger  | 1
- tiger  | 2
-(6 rows)
-
-edb=#
-edb=# select distinct on (a) a, b from dist_on order by 1,2;
-   a    | b
---------+---
- lion   | 1
- rabbit | 1
- tiger  | 1
-(3 rows)
-
-edb=#
-```
-
-### Regular Expression
-
-```
-edb=# create table reg_exp (a varchar);
-CREATE TABLE
-edb=#
-edb=# insert into reg_exp values ('가나다');
-INSERT 0 1
-edb=# insert into reg_exp values (100);
-INSERT 0 1
-edb=# insert into reg_exp values (2);
-INSERT 0 1
-edb=# insert into reg_exp values ('a한글123');
-INSERT 0 1
-edb=# insert into reg_exp values ('999test');
-INSERT 0 1
-edb=# insert into reg_exp values ('a89adf33');
-INSERT 0 1
-edb=#
-edb=# table reg_exp ;
-    a
-----------
- 가나다
- 100
- 2
- a한글123
- 999test
- a89adf33
-(6 rows)
-
-edb=#
-edb=# -- 로우중에서 숫자가 하나라도 들어가 있는 로우만 추출
-edb=# select * from reg_exp where a ~ '[0-9]+';
-    a
-----------
- 100
- 2
- a한글123
- 999test
- a89adf33
-(5 rows)
-
-edb=#
-edb=# -- 숫자가 하나도 들어가 있지 않은 로우만 추출
-edb=# select * from reg_exp where a !~ '[0-9]+';
-   a
---------
- 가나다
-(1 row)
-
-edb=#
-edb=# -- 데이터중 숫자부분만 추출
-edb=# select a, regexp_matches (a, '[0-9]+') from reg_exp;
-    a     | regexp_matches
-----------+----------------
- 100      | {100}
- 2        | {2}
- a한글123  | {123}
- 999test  | {999}
- a89adf33 | {89}
-(5 rows)
-
-edb=#
-edb=# -- regexp_matches는 배열로 값을 리턴. 배열중 밸류값만 추출
-edb=# select a, (regexp_matches (a, '[0-9]+'))[1] from reg_exp;
-    a     | regexp_matches
-----------+----------------
- 100      | 100
- 2        | 2
- a한글123  | 123
- 999test  | 999
- a89adf33 | 89
-(5 rows)
-
-edb=#
-edb=# -- 데이터중 모든 숫자부분 추출
-edb=# select a, regexp_matches (a, '[0-9]+', 'g') from reg_exp;
-    a     | regexp_matches
-----------+----------------
- 100      | {100}
- 2        | {2}
- a한글123  | {123}
- 999test  | {999}
- a89adf33 | {89}
- a89adf33 | {33}
-(6 rows)
-
-edb=#
-edb=# -- 배열에서 밸류만 추출
-edb=# select a, (regexp_matches (a, '[0-9]+', 'g'))[1] from reg_exp;
-    a     | regexp_matches
-----------+----------------
- 100      | 100
- 2        | 2
- a한글123  | 123
- 999test  | 999
- a89adf33 | 89
- a89adf33 | 33
-(6 rows)
-
-edb=#
-edb=# -- 숫자만으로 이루어진 로우만 필터링
-edb=# select a from reg_exp where a ~'^[0-9]+$';
-  a
------
- 100
- 2
-(2 rows)
-
-edb=#
 ```
