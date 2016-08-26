@@ -1,4 +1,4 @@
-# Lab: 기타 Oracle 변환 특이사항
+# 기타 Oracle 변환 특이사항
 
 ## PL/SQL안에서의 COMMIT, ROLLBACK
 
@@ -268,55 +268,6 @@ Out 변수에 `REFCURSOR` type을 사용하여 여러건의 데이터를 반환�
   stmt.close();
   ```
 
-## psql에서 bind 변수 포함 쿼리 실행 및 실행 계획 확인
-
-오라클과 다르게 PAS 에서는 바인드 변수기호로 $ 를 사용하는데 이런 쿼리를 실행하거나 실행 계획을 확인하려면 `prepare` 구문을 이용하여야 한다.
-
-```
-scottdb=> explain select * from emp where empno=$1;
-ERROR:  there is no parameter $1
-LINE 1: explain select * from emp where empno=$1;
-```
-
-```
-scottdb=> prepare stmt(int) as select * from emp where empno=$1;
-PREPARE
-scottdb=> explain execute stmt(7902);
-                     QUERY PLAN
-----------------------------------------------------
- Seq Scan on emp  (cost=0.00..1.18 rows=1 width=37)
-   Filter: (empno = 7902)
-(2 rows)
-```
-
-## Application Name
-
-개발 시 application_name을 설정하면 문제 발생 시 운영자가 원인 파악이 쉬워진다.
-
-### 설정 및 확인 방법
-
-* SQL에서 설정
-  
-  ```sql
-  set application_name = '프로그램 이름';
-  ```
-
-* JDBC의 `conn.setClientInfo()` 메소드 이용
-  
-  ```java
-  Connection.setClientInfo("ApplicationName", "XXX PROGRAM");
-  ```
-
-* 확인 방법
-  
-  ```
-  edb=# select application_name from pg_stat_activity;
-   application_name
-  ------------------
-   psql.bin
-  (1 row)
-  ```
-
 ## JDBC Fetch Size
 
 JDBC의 default fetch size가 Oracle의 경우 10으로 설정되어 있지만 PAS/PostgreSQL의 경우 0으로 설정 되어 있다. 따라서 쿼리 결과 건 수가 많은 경우 부분범위 처리를 위해서는 적당히 fetch size를 조절해 줄 필요가 있다. 또는 `limit`절을 추가하여 결과 건을 제한해 주어야 한다.
@@ -577,3 +528,51 @@ com.edb.util.PSQLException: ERROR: column "val3" is of type date but expression 
   
   위의 결과와 같이 PAS는 data type을 까다롭게 check하기 때문에 에러가 발생하게 된다. 따라서 반드시 `setNull()`에 정확한 data type을 지정하여 주거나 쿼리에서 명시적인 casting이 필요하다.
 
+## psql에서 bind 변수 포함 쿼리 실행 및 실행 계획 확인
+
+오라클과 다르게 PAS 에서는 바인드 변수기호로 `$` 를 사용하는데 이런 쿼리를 실행하거나 실행 계획을 확인하려면 `prepare` 구문을 이용하여야 한다.
+
+```
+scottdb=> explain select * from emp where empno=$1;
+ERROR:  there is no parameter $1
+LINE 1: explain select * from emp where empno=$1;
+```
+
+```
+scottdb=> prepare stmt(int) as select * from emp where empno=$1;
+PREPARE
+scottdb=> explain execute stmt(7902);
+                     QUERY PLAN
+----------------------------------------------------
+ Seq Scan on emp  (cost=0.00..1.18 rows=1 width=37)
+   Filter: (empno = 7902)
+(2 rows)
+```
+
+## Application Name
+
+개발 시 application_name을 설정하면 문제 발생 시 운영자가 원인 파악이 쉬워진다.
+
+### 설정 및 확인 방법
+
+* SQL에서 설정
+  
+  ```sql
+  set application_name = '프로그램 이름';
+  ```
+
+* JDBC의 `conn.setClientInfo()` 메소드 이용
+  
+  ```java
+  Connection.setClientInfo("ApplicationName", "XXX PROGRAM");
+  ```
+
+* 확인 방법
+  
+  ```
+  edb=# select application_name from pg_stat_activity;
+   application_name
+  ------------------
+   psql.bin
+  (1 row)
+  ```
