@@ -1,10 +1,10 @@
-# 기초적인 차이점
+# 기본적 차이점
 
 ## 숫자형 상수 처리
 
-### Oracle
+#### [Oracle]
 
-Oracle에서는 숫자를 기본적으로 number 형으로 처리한다.
+Oracle에서는 숫자를 기본적으로 `NUMBER` 형으로 처리한다.
 
 ```
 SQL> select '2147483647' + 0 from dual;
@@ -32,20 +32,20 @@ SQL> select '9223372036854775807' + 1 from dual;
                      9223372036854775808
 ```
 
-### PAS
+#### [PAS]
 
-PAS에서는 숫자를 크기에 따라 int, bigint, number로 처리한다.
+PAS에서는 숫자를 크기에 따라 `int`, `bigint`, `number`로 처리한다.
 
-* int: signed 32bit integer(-2147483648 ~ 2147483647)
-* bigint: signed 64bit integer(-9223372036854775808 ~ 9223372036854775807)
-* number/numeric: 가변길이 숫자
+* `int`: signed 32bit integer(-2147483648 ~ 2147483647)
+* `bigint`: signed 64bit integer(-9223372036854775808 ~ 9223372036854775807)
+* `number`/`numeric`: 가변길이 숫자
 
 ```
 edb=# select pg_typeof(2147483647), pg_typeof(2147483648), pg_typeof(9223372036854775808);
  pg_typeof | pg_typeof | pg_typeof
------------+-----------+-----------
- integer   | bigint    | numeric
-(1 row)
+ -----------+-----------+-----------
+  integer   | bigint    | numeric
+  (1 row)
 ```
 
 따라서 문자열 상수와 숫자형 상수의 연산시 아래 내용을 주의하여야 한다.
@@ -96,10 +96,9 @@ insert into test2 values (1, 'abc', 'abc', 'abc');
 insert into test2 values (2, 'abc    ', 'abc    ', 'abc    ');
 insert into test2 values (3, '    abc', '    abc', '    abc');
 insert into test2 values (4, '  abc  ', '  abc  ', '  abc  ');
-
 ```
 
-### Oracle
+#### [Oracle]
 
 ```
 SQL> select * from test2;
@@ -119,7 +118,7 @@ SQL> select id, length(val1), length(val2), length(val3) from test2;
          4            7           10            7
 ```
 
-### PAS
+#### [PAS]
 
 ```
 edb=# select * from test2;
@@ -141,67 +140,85 @@ edb=# select id, length(val1), length(val2), length(val3) from test2;
 
 ## Date type
 
-### `SYSDATE` & `now()`, `current_timestamp`, `localtimestamp`
+### 각종 날짜/시간 함수
 
-  * sysdate는 오라클 호환성 기능으로 제공되어 사용이 가능
-  * now() 함수의 경우, 트랜잭션으로 묶이게되면 트랜잭션 동안 트랜잭션이 시작된 시점으로 시간이 고정됨
+https://www.postgresql.org/docs/current/static/functions-datetime.html
 
-  ```sql
-  select sysdate, now, current_timestamp, localtimestamp;
-  select pg_sleep(1);
-  select sysdate, now, current_timestamp, localtimestamp;
-  ```
+| Function                       | SQL 표준 | Return Type                 | 시점        | Sample                              |
+| ------------------------------ | :------: | --------------------------- | ----------- | ----------------------------------- |
+| `current_date`                 |    O     | date                        | transaction | 29-AUG-16                           |
+| `current_time`                 |    O     | time with time zone         | transaction | 09:46:18.181616+09                  |
+| `current_timestamp`            |    O     | timestamp with time zone    | transaction | 29-AUG-16 09:46:18.181616 +09:00    |
+| `current_time(precision)`      |    O     | time with time zone         | transaction | 09:46:18.18+09                      |
+| `current_timestamp(precision)` |    O     | timestamp with time zone    | transaction | 29-AUG-16 09:46:18.18 +09:00        |
+| `localtime`                    |    O     | time without time zone      | transaction | 09:46:18.181616                     |
+| `localtimestamp`               |    O     | timestamp without time zone | transaction | 29-AUG-16 09:46:18.181858           |
+| `localtime(precision)`         |    O     | time without time zone      | transaction | 09:46:18.18                         |
+| `localtimestamp(precision)`    |    O     | timestamp without time zone | transaction | 29-AUG-16 09:46:18.18               |
+| `transaction_timestamp()`      |    X     | timestamp with time zone    | transaction | 29-AUG-16 09:46:18.181616 +09:00    |
+| `statement_timestamp()`        |    X     | timestamp with time zone    | statement   | 29-AUG-16 09:46:18.181616 +09:00    |
+| `clock_timestamp()`            |    X     | timestamp with time zone    | clock       | 29-AUG-16 09:46:18.181861 +09:00    |
+| `timeofday()`                  |    X     | text                        | clock       | Mon Aug 29 09:46:18.181862 2016 KST |
+| `now()`                        |    X     | timestamp with time zone    | transaction | 29-AUG-16 09:46:18.181616 +09:00    |
+| `SYSDATE`                      |    X     | timestamp without time zone | clock       | 29-AUG-16 09:46:18                  |
 
-  Auto commit 상태
+```sql
+select sysdate, now, current_timestamp, localtimestamp;
+select pg_sleep(1);
+select sysdate, now, current_timestamp, localtimestamp;
+```
 
-  ```
-  -[ RECORD 1 ]-----+--------------------------------
-  sysdate           | 16-FEB-16 14:44:09
-  now               | 16-FEB-16 14:44:09.28651 +09:00
-  current_timestamp | 16-FEB-16 14:44:09.28651 +09:00
-  localtimestamp    | 16-FEB-16 14:44:09.286643
+#### [Auto commit 상태]
 
-  -[ RECORD 1 ]
-  pg_sleep |
+```
+-[ RECORD 1 ]-----+--------------------------------
+sysdate           | 16-FEB-16 14:44:09
+now               | 16-FEB-16 14:44:09.28651 +09:00
+current_timestamp | 16-FEB-16 14:44:09.28651 +09:00
+localtimestamp    | 16-FEB-16 14:44:09.286643
 
-  -[ RECORD 1 ]-----+---------------------------------
-  sysdate           | 16-FEB-16 14:44:10
-  now               | 16-FEB-16 14:44:10.287492 +09:00
-  current_timestamp | 16-FEB-16 14:44:10.287492 +09:00
-  localtimestamp    | 16-FEB-16 14:44:10.287646
-  ```
-	
-  명시적으로 TX를 시작한 경우. `now()`는 TX의 시작시간에 고정됨
+-[ RECORD 1 ]
+pg_sleep |
 
-  ```
-  BEGIN;
+-[ RECORD 1 ]-----+---------------------------------
+sysdate           | 16-FEB-16 14:44:10
+now               | 16-FEB-16 14:44:10.287492 +09:00
+current_timestamp | 16-FEB-16 14:44:10.287492 +09:00
+localtimestamp    | 16-FEB-16 14:44:10.287646
+```
 
-  -[ RECORD 1 ]-----+---------------------------------
-  sysdate           | 16-FEB-16 14:44:10
-  now               | 16-FEB-16 14:44:10.287806 +09:00
-  current_timestamp | 16-FEB-16 14:44:10.287899 +09:00
-  localtimestamp    | 16-FEB-16 14:44:10.288149
+#### [명시적으로 TX를 시작한 경우] `now()`는 TX의 시작시간에 고정됨
 
-  -[ RECORD 1 ]
-  pg_sleep |
+```
+BEGIN;
 
-  -[ RECORD 1 ]-----+---------------------------------
-  sysdate           | 16-FEB-16 14:44:11
-  now               | 16-FEB-16 14:44:10.287806 +09:00
-  current_timestamp | 16-FEB-16 14:44:11.290238 +09:00
-  localtimestamp    | 16-FEB-16 14:44:11.290355
+-[ RECORD 1 ]-----+---------------------------------
+sysdate           | 16-FEB-16 14:44:10
+now               | 16-FEB-16 14:44:10.287806 +09:00
+current_timestamp | 16-FEB-16 14:44:10.287899 +09:00
+localtimestamp    | 16-FEB-16 14:44:10.288149
 
-  COMMIT;
-  ```
+-[ RECORD 1 ]
+pg_sleep |
+
+-[ RECORD 1 ]-----+---------------------------------
+sysdate           | 16-FEB-16 14:44:11
+now               | 16-FEB-16 14:44:10.287806 +09:00
+current_timestamp | 16-FEB-16 14:44:11.290238 +09:00
+localtimestamp    | 16-FEB-16 14:44:11.290355
+
+COMMIT;
+```
 
 ### Interval truncation
 
 PAS에서는 날짜간의 연산 결과가 interval type인데 interval type은 `trunc()`함수를 사용할 수 없다.
 
-#### Oracle
+#### [Oracle]
 
-```sql
+```
 SQL> select (sysdate + 1 + 1/24) - sysdate from dual;
+
 
 (SYSDATE+1+1/24)-SYSDATE
 ------------------------
@@ -209,14 +226,15 @@ SQL> select (sysdate + 1 + 1/24) - sysdate from dual;
 
 SQL> select trunc((sysdate + 1 + 1/24) - sysdate) from dual;
 
+
 TRUNC((SYSDATE+1+1/24)-SYSDATE)
 -------------------------------
 			      1
 ```
 
-#### PAS
+#### [PAS]
 
-```sql
+```
 edb=# select (sysdate + 1 + 1/24) - sysdate from dual;
     ?column?
 ----------------
@@ -232,7 +250,7 @@ HINT:  No function matches the given name and argument types. You might need to 
 
 이 경우 `date_part()` 함수를 이용할 수 있다.
 
-```sql
+```
 edb=# select date_part('days', (sysdate + 1 + 1/24) - sysdate) from dual;
  date_part
 -----------
@@ -251,16 +269,17 @@ edb=# select date_part('days', (sysdate + 1 + 1/24) - sysdate) from dual;
 * 오라클에서는 `''` 값을 NULL로 인식하나 PAS에서는 값 (공백)으로 인식
 * 오라클은 Date 형 타입에 입력 시 `''`을 입력하면 `NULL`로 입력되지만, PAS에서는 `''` 사용 불가. 명시적으로 `NULL` 로 입력해야함
 * 예시
+
   ```SQL
   INSERT INTO test VALUES ('', NULL);
   ```
 
   | SQL                                         | ORACLE | EDB PAS |
-  |---------------------------------------------|--------|---------|
-  | `select count(*) from test where a = ''`    |    0   |    1    |
-  | `select count(*) from test where a is null` |    1   |    0    |
-  | `select count(*) from test where b = ''`    |    0   |    0    |
-  | `select count(*) from test where b is null` |    1   |    1    |
+  | ------------------------------------------- | ------ | ------- |
+  | `select count(*) from test where a = ''`    | 0      | 1       |
+  | `select count(*) from test where a is null` | 1      | 0       |
+  | `select count(*) from test where b = ''`    | 0      | 0       |
+  | `select count(*) from test where b is null` | 1      | 1       |
 
 ### `NULL`과 Index
 
@@ -303,7 +322,7 @@ edb=# select date_part('days', (sysdate + 1 + 1/24) - sysdate) from dual;
   ```
 
   모든 index type에 해당되는 것은 아니며 각 index type 별로 null 값에 대한 indexing을 지원하는 지 여부는 아래와 같이 확인할 수 있다.
-  
+
   ```
   edb=# select amname, amsearchnulls from pg_am;
    amname | amsearchnulls
@@ -343,7 +362,7 @@ Ansi SQL 키워드 및 PAS 전용 키워드는 Alias명이나 변수 명으로 �
   ```
 
 * 예약어 목록
-  
+
   http://www.postgresql.org/docs/9.5/static/sql-keywords-appendix.html
 
 ## 식별자 대소문자 구별
@@ -354,7 +373,7 @@ EDB PAS 역시 오라클과 마찬가지로 테이블, 컬럼 명 등의 식별�
 edb=# create table test (a integer, B integer);
 CREATE TABLE
 edb=# select A, b from Test;
- a | b
+a | b
 ---+---
 (0 rows)
 ```
@@ -363,95 +382,96 @@ edb=# select A, b from Test;
 
 ### 예제
 
-* 테이블 생성
+```sql
+create table "test" ("A" integer, "B" integer);
+insert into "test" values (1, 1);
+```
 
-	```
-  create table "test" ("A" integer, "B" integer);
-  insert into "test" values (1, 1);
-  ```
+#### [Oracle]
 
-* Oracle
+오라클은 기본적으로 식별자를 대문자로 처리한다. 따라서 `test`를 조회하는 경우 `"TEST"`를 찾으려고 하지만 `"test"`만 존제하기 때문에 에러가 발생한다.
 
-  오라클은 기본적으로 식별자를 대문자로 처리한다. 따라서 `test`를 조회하는 경우 `"TEST"`를 찾으려고 하지만 `"test"`만 존제하기 때문에 에러가 발생한다.
-
-  ```
-  SQL> select * from test;
-  select * from test
-                *
-  ERROR at line 1:
-  ORA-00942: table or view does not exist
-
-  SQL> select * from "test";
-
-     A	    B
-  ---------- ----------
-     1	    1
-
-  SQL> select * from "TEST";
-  select * from "TEST"
-                *
-  ERROR at line 1:
-  ORA-00942: table or view does not exist
-
-  SQL> select a, b from "test";
-
-     A	    B
-  ---------- ----------
-     1	    1
-
-  SQL> select "A", "B" from "test";
-
-     A	    B
-  ---------- ----------
-     1	    1
-
-  SQL> select "a", "b" from "test";
-  select "a", "b" from "test"
+```
+SQL> select * from test;
+select * from test
               *
-  ERROR at line 1:
-  ORA-00904: "b": invalid identifier
-  ```
+ERROR at line 1:
+ORA-00942: table or view does not exist
 
-* PAS
-  PAS는 기본적으로 소문자로 처리하며 `test`를 조회하는 경우 `"test"`를 찾으려고 한다.
+SQL> select * from "test";
 
-  ```
-  edb=# select * from test;
-   A | B
-  ---+---
-   1 | 1
-  (1 row)
+   A	    B
+---------- ----------
+   1	    1
 
-  edb=# select * from "test";
-   A | B
-  ---+---
-   1 | 1
-  (1 row)
+SQL> select * from "TEST";
+select * from "TEST"
+              *
+ERROR at line 1:
+ORA-00942: table or view does not exist
 
-  edb=# select * from "TEST";
-  ERROR:  relation "TEST" does not exist
-  LINE 1: select * from "TEST";
-                        ^
-  edb=# select a, b from "test";
-  ERROR:  column "a" does not exist
-  LINE 1: select a, b from "test";
-                 ^
-  edb=# select "A", "B" from "test";
-   A | B
-  ---+---
-   1 | 1
-  (1 row)
+SQL> select a, b from "test";
 
-  edb=# select "a", "b" from "test";
-  ERROR:  column "a" does not exist
-  LINE 1: select "a", "b" from "test";
-                 ^
-  ```
+   A	    B
+---------- ----------
+   1	    1
+
+SQL> select "A", "B" from "test";
+
+   A	    B
+---------- ----------
+   1	    1
+
+SQL> select "a", "b" from "test";
+select "a", "b" from "test"
+            *
+ERROR at line 1:
+ORA-00904: "b": invalid identifier
+```
+
+#### [PAS]
+
+PAS는 기본적으로 소문자로 처리하며 `test`를 조회하는 경우 `"test"`를 찾으려고 한다.
+
+```
+edb=# select * from test;
+ A | B
+---+---
+ 1 | 1
+(1 row)
+
+edb=# select * from "test";
+ A | B
+---+---
+ 1 | 1
+(1 row)
+
+edb=# select * from "TEST";
+ERROR:  relation "TEST" does not exist
+LINE 1: select * from "TEST";
+                      ^
+edb=# select a, b from "test";
+ERROR:  column "a" does not exist
+LINE 1: select a, b from "test";
+               ^
+edb=# select "A", "B" from "test";
+ A | B
+---+---
+ 1 | 1
+(1 row)
+
+edb=# select "a", "b" from "test";
+ERROR:  column "a" does not exist
+LINE 1: select "a", "b" from "test";
+               ^
+```
 
 # PostgreSQL 고유 기능
 ## Domain Data Type
 
-**예제**: TEST1 과 TEST2 테이블의 컬럼은 아래 CHECK 제약 조건에 의해 VARCHAR 형이지만 2자리 숫자 타입의 값만 받아들여야함!
+### 예제
+
+상황: TEST1 과 TEST2 테이블의 컬럼은 아래 CHECK 제약 조건에 의해 VARCHAR 형이지만 2자리 숫자 타입의 값만 받아들여야함
 
 ```
 edb=# CREATE TABLE TEST1 (COL1 varchar(2)  CHECK (COL1 ~'[[:digit:]]{2}'));  -- 정규식 (regular expression)
@@ -556,31 +576,24 @@ UPDATE 2
 edb=#
 ```
 
-오라클 경우에도 UPDATE .. RETURNING 문을 지원하나 PL/SQL 등에서만 사용해야함
+오라클 경우에도 `UPDATE .. RETURNING` 문을 지원하나 PL/SQL 등에서만 사용해야함
 
 ## Distinct On
 
-a 컬럼에 대해 distinct 한 값 로우만을 가져오는 동시에, b 컬럼까지 한번에 select 가능
+### 준비
+
+```sql
+create table dist_on (a varchar, b int);
+insert into dist_on values ('lion', 1);
+insert into dist_on values ('lion', 2);
+insert into dist_on values ('tiger', 2);
+insert into dist_on values ('tiger', 1);
+insert into dist_on values ('rabbit', 1);
+insert into dist_on values ('rabbit', 2);
+insert into dist_on values ('rabbit', 1);
+```
 
 ```
-edb=# create table dist_on (a varchar, b int);
-CREATE TABLE
-edb=#
-edb=# insert into dist_on values ('lion', 1);
-INSERT 0 1
-edb=# insert into dist_on values ('lion', 2);
-INSERT 0 1
-edb=# insert into dist_on values ('tiger', 2);
-INSERT 0 1
-edb=# insert into dist_on values ('tiger', 1);
-INSERT 0 1
-edb=# insert into dist_on values ('rabbit', 1);
-INSERT 0 1
-edb=# insert into dist_on values ('rabbit', 2);
-INSERT 0 1
-edb=# insert into dist_on values ('rabbit', 1);
-INSERT 0 1
-edb=#
 edb=# table dist_on ;
    a    | b
 --------+---
@@ -592,8 +605,11 @@ edb=# table dist_on ;
  rabbit | 2
  rabbit | 1
 (7 rows)
+```
 
-edb=#
+### a 컬럼에 대해 distinct 한 값 로우만을 가져오는 동시에, b 컬럼까지 한번에 select 가능
+
+```
 edb=# select distinct a, b from dist_on order by 1,2;
    a    | b
 --------+---
@@ -605,7 +621,6 @@ edb=# select distinct a, b from dist_on order by 1,2;
  tiger  | 2
 (6 rows)
 
-edb=#
 edb=# select distinct on (a) a, b from dist_on order by 1,2;
    a    | b
 --------+---
@@ -614,28 +629,32 @@ edb=# select distinct on (a) a, b from dist_on order by 1,2;
  tiger  | 1
 (3 rows)
 
-edb=#
+edb=# select distinct on (a) a, b from dist_on order by 1,2 desc;
+   a    | b
+--------+---
+ lion   | 2
+ rabbit | 2
+ tiger  | 2
+(3 rows)
 ```
+
+distinct 조건이 아닌 컬럼은 정렬순으로 첫번째 값을 가져옴
 
 ## Regular Expression
 
+### 준비
+
+```sql
+create table reg_exp (a varchar);
+insert into reg_exp values ('가나다');
+insert into reg_exp values (100);
+insert into reg_exp values (2);
+insert into reg_exp values ('a한글123');
+insert into reg_exp values ('999test');
+insert into reg_exp values ('a89adf33');
 ```
-edb=# create table reg_exp (a varchar);
-CREATE TABLE
-edb=#
-edb=# insert into reg_exp values ('가나다');
-INSERT 0 1
-edb=# insert into reg_exp values (100);
-INSERT 0 1
-edb=# insert into reg_exp values (2);
-INSERT 0 1
-edb=# insert into reg_exp values ('a한글123');
-INSERT 0 1
-edb=# insert into reg_exp values ('999test');
-INSERT 0 1
-edb=# insert into reg_exp values ('a89adf33');
-INSERT 0 1
-edb=#
+
+```
 edb=# table reg_exp ;
     a
 ----------
@@ -646,9 +665,11 @@ edb=# table reg_exp ;
  999test
  a89adf33
 (6 rows)
+```
 
-edb=#
-edb=# -- 로우중에서 숫자가 하나라도 들어가 있는 로우만 추출
+### 로우중에서 숫자가 하나라도 들어가 있는 로우만 추출
+
+```
 edb=# select * from reg_exp where a ~ '[0-9]+';
     a
 ----------
@@ -658,17 +679,21 @@ edb=# select * from reg_exp where a ~ '[0-9]+';
  999test
  a89adf33
 (5 rows)
+```
 
-edb=#
-edb=# -- 숫자가 하나도 들어가 있지 않은 로우만 추출
+### 숫자가 하나도 들어가 있지 않은 로우만 추출
+
+```
 edb=# select * from reg_exp where a !~ '[0-9]+';
    a
 --------
  가나다
 (1 row)
+```
 
-edb=#
-edb=# -- 데이터중 숫자부분만 추출
+### 데이터중 숫자부분만 추출
+
+```
 edb=# select a, regexp_matches (a, '[0-9]+') from reg_exp;
     a     | regexp_matches
 ----------+----------------
@@ -678,9 +703,11 @@ edb=# select a, regexp_matches (a, '[0-9]+') from reg_exp;
  999test  | {999}
  a89adf33 | {89}
 (5 rows)
+```
 
-edb=#
-edb=# -- regexp_matches는 배열로 값을 리턴. 배열중 밸류값만 추출
+### regexp_matches는 배열로 값을 리턴. 배열중 밸류값만 추출
+
+```
 edb=# select a, (regexp_matches (a, '[0-9]+'))[1] from reg_exp;
     a     | regexp_matches
 ----------+----------------
@@ -691,8 +718,11 @@ edb=# select a, (regexp_matches (a, '[0-9]+'))[1] from reg_exp;
  a89adf33 | 89
 (5 rows)
 
-edb=#
-edb=# -- 데이터중 모든 숫자부분 추출
+```
+
+### 데이터중 모든 숫자부분 추출
+
+```
 edb=# select a, regexp_matches (a, '[0-9]+', 'g') from reg_exp;
     a     | regexp_matches
 ----------+----------------
@@ -703,9 +733,10 @@ edb=# select a, regexp_matches (a, '[0-9]+', 'g') from reg_exp;
  a89adf33 | {89}
  a89adf33 | {33}
 (6 rows)
+```
 
-edb=#
-edb=# -- 배열에서 밸류만 추출
+### 배열에서 밸류만 추출
+```
 edb=# select a, (regexp_matches (a, '[0-9]+', 'g'))[1] from reg_exp;
     a     | regexp_matches
 ----------+----------------
@@ -716,17 +747,17 @@ edb=# select a, (regexp_matches (a, '[0-9]+', 'g'))[1] from reg_exp;
  a89adf33 | 89
  a89adf33 | 33
 (6 rows)
+```
 
-edb=#
-edb=# -- 숫자만으로 이루어진 로우만 필터링
+### 숫자만으로 이루어진 로우만 필터링
+
+```
 edb=# select a from reg_exp where a ~'^[0-9]+$';
   a
 -----
  100
  2
 (2 rows)
-
-edb=#
 ```
 
 # 비호환 구문 변환 사례
@@ -1224,7 +1255,7 @@ WHEN NOT MATCHED THEN
 #### 9.4 이전 방식
 
 ```sql
-WITH upsert AS 
+WITH upsert AS
 (
   UPDATE myTable2 m SET sales = m.sales + d.sales , status = d.status
   FROM myTable d
@@ -1341,8 +1372,8 @@ Sub-query의 결과가 `unknown` type일 경우 이 값을 이용한 함수 호�
 SELECT DEPTNO
      , LISTAGG(ENAME,',') WITHIN GROUP (ORDER BY DEPTNO)
      , WM_CONCAT(ENAME)
-  FROM EMP 
- GROUP BY DEPTNO; 
+  FROM EMP
+ GROUP BY DEPTNO;
 ```
 
 ### PAS
@@ -1350,8 +1381,8 @@ SELECT DEPTNO
 ```sql
 SELECT DEPTNO
      , ARRAY_TO_STRING(ARRAY_AGG(ENAME ORDER BY DEPTNO),',')
-   FROM EMP 
-GROUP BY DEPTNO; 
+   FROM EMP
+GROUP BY DEPTNO;
 ```
 
 오라클의 `LISTAGG`는 `distinct`를 지원하지 않고 `WM_CONCAT`는 `order by`를 지원하지 않는 반면 PAS의 `array_agg`는 둘다 지원하기 때문에 더 간편하게 사용 가능하다.
