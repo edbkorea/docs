@@ -7,11 +7,12 @@ PAS에서는 PL/SQL 내부에서 commit, rollback시 동작 방식에 약간의 
 
 ### 예제
 
-```
+```sql
 create table x(x int primary key);
 insert into x values(100);
 commit;
 ```
+
 ```
 edb=# select * from x;
  x
@@ -43,7 +44,7 @@ END;
 
 ### 실행 결과
 
-#### Oracle
+#### [Oracle]
 
 ```
   1  BEGIN
@@ -87,7 +88,7 @@ SQL> select * from x;
 
 Error가 발생하여도 commit 되지 않은 transaction은 그대로 남아 있다.
 
-#### PAS
+#### [PAS]
 
 * Default
 
@@ -503,7 +504,7 @@ com.edb.util.PSQLException: ERROR: column "val3" is of type date but expression 
 
 #### 결과
 
-* Oracle
+* [Oracle]
   
   ```
   SQL> select * from test;
@@ -515,7 +516,7 @@ com.edb.util.PSQLException: ERROR: column "val3" is of type date but expression 
   TEST3
   ```
 
-* PAS
+* [PAS]
   
   ```
   edb=# select * from test;
