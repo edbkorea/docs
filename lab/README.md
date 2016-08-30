@@ -14,6 +14,8 @@
   * Monitoring : `Monitoring.md`
   * Moving data : `MovingData.md`
   * Tablespace : `Tablespace.md`
+  * Patch : `PAS Patch.md`
+  * Upgrade : `pg_upgrade.md`
 * MISC
   * Extension : `Extension.md`
   * Scheduler : `Scheduler.md`
@@ -35,7 +37,6 @@
 
 ## TODO
 
-* pg_upgrade
 * BRIN
 * replication slot
 * Full text search
