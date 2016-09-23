@@ -859,7 +859,7 @@ Hard link 방법을 이용하여 PAS 9.4.5.12 버전의 클러스터를 PAS 9.5.
 | dump / restore             |        300.0 |
 | dump with parallel restore |        180.0 |
 | pg_upgrade in copy mode    |         44.0 |
-| pg_upgrade in link mode    | 0.7 (44 sec) |
+| pg_upgrade in link mode    |          0.7 |
 
 * Database Size : 150GB, 850 tables
 * 하드웨어 스펙 : N/A
